@@ -108,7 +108,6 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
 
         sd_scene_data = sd_texture_functions.get_sd_setup_scene_data()
         mesh_collection = sd_scene_data["mesh_collection"]
-
         scene_name = sd_scene_data["blend_name"]
         subject_name = sd_scene_data["subject_mesh"].name
 
@@ -122,9 +121,11 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
             facing_img_mask_path = sd_texture_functions.render_facing(scene_name, subject_name)
             bpy.data.images.load(facing_img_mask_path)
 
+            # bake the shadowing mask
             image_name = f"{obj.name}_shadowing_mask"
             shadowing_img_path = sd_texture_functions.render_shadowing(obj, sd_scene_data['blend_name'], image_name)
 
+            # project the UVs
             uv_layer_name = f"{obj.name}_cam_proj"
             uv_layer_proj_name = sd_texture_functions.project_uvs_from_camera(obj, sd_scene_data['camera'], uv_layer_name)
 
@@ -146,6 +147,10 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
 
             obj["Shadowing mirrored img path"] = shadowing_mirrored_img_path
             obj["UV Map mirrored name"] = uv_layer_proj_mirrored_name
+
+            # get active scene
+            scene = bpy.context.scene
+            scene["Facing img path"] = facing_img_mask_path
 
 
         # change the mouse cursor back to the default

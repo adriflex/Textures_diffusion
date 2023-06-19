@@ -333,7 +333,7 @@ def render_facing(scene_name: str, subject_mesh_name: str):
     facing_scene.view_settings.view_transform = 'Standard'
 
     # set the output path
-    facing_img_mask_path = f"//{scene_name}_SD_maps/{subject_mesh_name}_facing.png"
+    facing_img_mask_path = f"//{scene_name}_SD_maps/{subject_mesh_name}_facing.exr"
     facing_scene.render.filepath = facing_img_mask_path
 
     # set default environment
@@ -375,6 +375,11 @@ def get_sd_setup_scene_data() -> dict:
     camera = active_scene.camera
     blend_name = get_blend_name_without_ext()
     subject_mesh = active_scene["Subject mesh"]
+    facing_img_path = None
+
+    if "Facing img path" in active_scene.keys():
+        facing_img_path = active_scene["Facing img path"]
+
 
     print(f"Blend name: {blend_name}")
     print(f"Subject name: {subject_mesh.name}")
@@ -385,6 +390,7 @@ def get_sd_setup_scene_data() -> dict:
                 "subject_mesh": subject_mesh,
                 "camera": camera,
                 "mesh_collection": mesh_collection,
+                "facing_img_path": facing_img_path
                 }
 
     return sd_scene
