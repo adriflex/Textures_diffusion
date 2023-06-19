@@ -409,7 +409,7 @@ def diffuse_bake_nodes(material: Material):
     diffuse_bake_mat.links.new(diffuse_bsdf.outputs[0], material_output.inputs[0])
 
 
-def render_shadowing(obj: Mesh, scene_name: str):
+def render_shadowing(obj: Mesh, scene_name: str, image_name: str):
     print("Object to bake: ", obj)
     print("Object to bake type: ", type(obj))
     print("Object to bake name: ", obj.name)
@@ -458,7 +458,7 @@ def render_shadowing(obj: Mesh, scene_name: str):
     diffuse_bake_nodes(bake_material)
 
     # bake the light map
-    image_name = f"{obj.name}_shadowing_mask"
+    # image_name = f"{obj.name}_shadowing_mask"
 
     # image to bake into
     if image_name in bpy.data.images.keys():
@@ -505,17 +505,14 @@ def select_object_solo(obj):
     obj.select_set(True)
 
 
-def project_uvs_from_camera(obj, camera):
+def project_uvs_from_camera(obj, camera, uv_layer_name):
     assert obj.type == 'MESH', "Object to project from is not a mesh"
     assert camera.type == 'CAMERA', "Camera is not a camera"
 
     print("Projecting from camera: ", camera.name)
     print("Projecting mesh: ", obj.name)
 
-    # setup uv_layer
-    # current uv_layer active
-
-    proj_uv_layer_name = f"{obj.name}_cam_proj"
+    proj_uv_layer_name = uv_layer_name
 
     if proj_uv_layer_name not in obj.data.uv_layers.keys():
         obj.data.uv_layers.new(name=proj_uv_layer_name)
@@ -536,6 +533,7 @@ def project_uvs_from_camera(obj, camera):
 
     obj.data.uv_layers[proj_uv_layer_name].active = True
     bpy.ops.uv.project_from_view(camera_bounds=True, correct_aspect=False, scale_to_bounds=False)
+
     bpy.ops.object.mode_set(mode='OBJECT')
 
     obj.data.uv_layers[0].active = True
@@ -592,3 +590,16 @@ def create_sd_shading_mat(subject_name, sd_meshes_data) -> Material:
         print("Mesh UV Map name : ", mesh_data["uv_map_name"])
 
     return  # todo material
+
+
+def mirror_obj(obj: Mesh, axis: str):
+    match axis:
+        case ('X'):
+            obj.scale.x *= -1
+        case ('Y'):
+            obj.scale.y *= -1
+        case ('Z'):
+            obj.scale.z *= -1
+        case _:
+            raise ValueError("Axis must be one of 'X', 'Y', 'Z'")
+
