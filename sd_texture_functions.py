@@ -574,6 +574,7 @@ def transfer_uvs_from_proj_to_shading(context, sd_scene_data: dict, shading_mesh
         assert obj.type == "MESH", f"Object {obj.name} is not a mesh"
 
         transfer_uvs(obj, shading_mesh, obj["UV Map name"])
+        transfer_uvs(obj, shading_mesh, obj["UV Map mirrored name"])
 
     active_scene.collection.children.unlink(sd_scene_data["mesh_collection"])
 
