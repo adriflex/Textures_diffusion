@@ -107,17 +107,25 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
         sd_scene_data = sd_texture_functions.get_sd_setup_scene_data()
         mesh_collection = sd_scene_data["mesh_collection"]
 
+        scene_name = sd_scene_data["blend_name"]
+        subject_name = sd_scene_data["subject_mesh"].name
+
         # change the mouse cursor to a watch
         bpy.context.window.cursor_set("WAIT")
 
         for obj in mesh_collection.objects:
             assert obj.type == "MESH", f"Object {obj.name} is not a mesh"
 
+            # bake the facing mask
+            facing_img_mask_path = sd_texture_functions.render_facing(scene_name, subject_name)
+            bpy.data.images.load(facing_img_mask_path)
+
             # bake the projection mask
             shadowing_img_path = sd_texture_functions.render_shadowing(obj, sd_scene_data['blend_name'])
 
             # bake the UVs
             uv_layer_proj_name = sd_texture_functions.project_uvs_from_camera(obj, sd_scene_data['camera'])
+
 
             # add file output to the object custom properties
             obj["Shadowing img path"] = shadowing_img_path

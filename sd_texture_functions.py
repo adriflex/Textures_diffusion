@@ -163,6 +163,32 @@ def depth_mat_nodes(material: Material, min_depth: float, max_depth: float):
     depth_mat.links.new(camera_data.outputs[1], map_range.inputs[0])
 
 
+def facing_mat_nodes(material: Material):
+    facing_mat = material.node_tree
+    # start with a clean node tree
+    for node in facing_mat.nodes:
+        facing_mat.nodes.remove(node)
+    # initialize material nodes
+    # node Material Output
+    material_output = facing_mat.nodes.new("ShaderNodeOutputMaterial")
+
+    # node Layer Weight
+    layer_weight = facing_mat.nodes.new("ShaderNodeLayerWeight")
+
+    # node Invert
+    invert = facing_mat.nodes.new("ShaderNodeInvert")
+
+    # Set locations
+    material_output.location = (300.0, 300.0)
+    layer_weight.location = (-95.3, 279.6)
+    invert.location = (85.6, 276.9)
+
+    # initialize material links
+    # invert.Color -> material_output.Surface
+    facing_mat.links.new(invert.outputs[0], material_output.inputs[0])
+    # layer_weight.Facing -> invert.Color
+    facing_mat.links.new(layer_weight.outputs[1], invert.inputs[1])
+
 def get_scene_depth(camera: Camera, collection: LayerCollection) -> dict:
     # return the depth of the scene view by the camera
     # get the camera position
@@ -294,6 +320,42 @@ def render_depth(scene_name: str, subject_mesh_name: str):
     # delete the scene
     bpy.data.scenes.remove(depth_scene)
 
+
+def render_facing(scene_name: str, subject_mesh_name: str):
+    facing_scene = bpy.context.scene.copy()
+
+    facing_scene.name = "SD_texture_bake_facing"
+    facing_scene.render.engine = 'CYCLES'
+    facing_scene.render.image_settings.file_format = 'OPEN_EXR'
+    facing_scene.render.image_settings.color_mode = 'RGB'
+    facing_scene.render.image_settings.color_depth = '16'
+    facing_scene.display_settings.display_device = 'None'
+    facing_scene.view_settings.view_transform = 'Standard'
+
+    # set the output path
+    facing_img_mask_path = f"//{scene_name}_SD_maps/{subject_mesh_name}_facing.png"
+    facing_scene.render.filepath = facing_img_mask_path
+
+    # set default environment
+    world = bpy.data.worlds.new("World_facing")
+    facing_scene.world = world
+    world.use_nodes = True
+    world.node_tree.nodes["Background"].inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)
+
+    # override the materials with a new material displaying the tangent space normal
+    facing_material = bpy.data.materials.new(name="SD_texture_facing")
+    facing_material.use_nodes = True
+
+    facing_mat_nodes(facing_material)
+    facing_scene.view_layers["ViewLayer"].material_override = facing_material
+
+    # render the scene
+    bpy.ops.render.render(scene=facing_scene.name, write_still=True)
+
+    # delete the scene
+    bpy.data.scenes.remove(facing_scene)
+
+    return facing_img_mask_path
 
 def get_blend_name_without_ext() -> str:
     blend_file_path = pathlib.Path(bpy.data.filepath)
