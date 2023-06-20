@@ -1,5 +1,7 @@
 from math import radians
+
 import bpy
+
 from . import sd_texture_functions
 
 
@@ -99,7 +101,6 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
     # todo > undo render params
     # todo > parameter mirror : bool and axis : "X", "Y", "Z"
 
-
     def execute(self, context):
 
         if not bpy.data.is_saved:
@@ -127,19 +128,21 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
 
             # project the UVs
             uv_layer_name = f"{obj.name}_cam_proj"
-            uv_layer_proj_name = sd_texture_functions.project_uvs_from_camera(obj, sd_scene_data['camera'], uv_layer_name)
+            uv_layer_proj_name = sd_texture_functions.project_uvs_from_camera(obj, sd_scene_data['camera'],
+                                                                              uv_layer_name)
 
             # mirror
             sd_texture_functions.mirror_obj(obj, "X")
 
             image_name = f"{obj.name}_shadowing_mask_mirrored"
-            shadowing_mirrored_img_path = sd_texture_functions.render_shadowing(obj, sd_scene_data['blend_name'], image_name)
+            shadowing_mirrored_img_path = sd_texture_functions.render_shadowing(obj, sd_scene_data['blend_name'],
+                                                                                image_name)
 
             uv_layer_name = f"{obj.name}_cam_proj_mirrored"
-            uv_layer_proj_mirrored_name = sd_texture_functions.project_uvs_from_camera(obj, sd_scene_data['camera'], uv_layer_name)
+            uv_layer_proj_mirrored_name = sd_texture_functions.project_uvs_from_camera(obj, sd_scene_data['camera'],
+                                                                                       uv_layer_name)
 
             sd_texture_functions.mirror_obj(obj, "X")
-
 
             # add file output to the object custom properties
             obj["Shadowing img path"] = shadowing_img_path
@@ -151,7 +154,6 @@ class SDTextureProj_OT_BakeSDMeshes(bpy.types.Operator):
             # get active scene
             scene = bpy.context.scene
             scene["Facing img path"] = facing_img_mask_path
-
 
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
@@ -173,19 +175,16 @@ class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
         subject_mesh = sd_scene_data["subject_mesh"]
         subject_name = subject_mesh.name
 
-        # create a new scene for the shading
-        shading_scene = bpy.data.scenes.new(name=f"{subject_name} SD shading")
+        shading_scene_name = f"{subject_name} SD shading"
 
-        shading_mesh = subject_mesh.copy()
-        shading_mesh.data = subject_mesh.data.copy()
-        shading_mesh.name = f"{subject_name}_shading"
-        shading_mesh.data.name = f"{subject_name}_shading"
-
-        shading_scene.collection.objects.link(shading_mesh)
+        if shading_scene_name not in bpy.data.scenes:
+            shading_scene = sd_texture_functions.create_shading_scene(shading_scene_name, subject_mesh)
+        else:
+            shading_scene = bpy.data.scenes[shading_scene_name]
 
         context.window.scene = shading_scene
 
-        sd_texture_functions.transfer_uvs_from_proj_to_shading(context, sd_scene_data, shading_mesh)
+        sd_texture_functions.transfer_uvs_from_proj_to_shading(context, sd_scene_data, shading_scene['Subject mesh'])
 
         # create a new material for the shading
         shading_mat = sd_texture_functions.create_sd_shading_mat(subject_name, sd_meshes_data)

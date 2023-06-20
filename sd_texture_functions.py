@@ -610,3 +610,19 @@ def mirror_obj(obj: Mesh, axis: str):
         case _:
             raise ValueError("Axis must be one of 'X', 'Y', 'Z'")
 
+def create_shading_scene(shading_scene_name: str, subject_mesh) -> bpy.types.Scene:
+    # create a new scene for the shading
+    shading_scene = bpy.data.scenes.new(name=shading_scene_name)
+
+    # copy the mesh into the shading scene
+    shading_mesh = subject_mesh.copy()
+    shading_mesh.data = subject_mesh.data.copy()
+    shading_mesh.name = f"{subject_mesh.name}_shading"
+    shading_mesh.data.name = f"{subject_mesh.name}_shading"
+
+    shading_scene.collection.objects.link(shading_mesh)
+
+    shading_scene['Subject mesh'] = shading_mesh
+
+    return shading_scene
+
