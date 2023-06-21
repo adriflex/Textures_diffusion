@@ -24,7 +24,7 @@ def create_img_dir(scene: Scene):
     scene[img_dir_prop_name] = image_directory
 
 
-def select_object_solo(obj):
+def select_object_solo(obj: Mesh):
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True)
@@ -120,7 +120,7 @@ def render_normal(render_path: str):
     bpy.data.scenes.remove(normal_scene)
 
 
-def render_depth(render_path: str, mesh_collection):
+def render_depth(render_path: str, mesh_collection: LayerCollection):
     depth_scene = bpy.context.scene.copy()
 
     depth_scene.name = "Render_depth"
