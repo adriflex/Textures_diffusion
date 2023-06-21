@@ -22,8 +22,9 @@ from . import sd_texture_operators
 
 register_classes = [
     sd_texture_operators.SDTextureProj_OT_CreateProjScene,
-    sd_texture_operators.SDTextureProj_OT_BakeMapsForSD,
-    sd_texture_operators.SDTextureProj_OT_BakeSDMeshes,
+    sd_texture_operators.SDTextureProj_OT_RenderRefImg,
+    sd_texture_operators.SDTextureProj_OT_BakeProjMasks,
+    sd_texture_operators.SDTextureProj_OT_CreateProjUVs,
     sd_texture_operators.SDTextureProj_OT_CreateShadingScene,
 ]
 
@@ -38,4 +39,3 @@ def unregister():
     for cls in register_classes:
         bpy.utils.unregister_class(cls)
         print("Unregistered class: ", cls)
-
