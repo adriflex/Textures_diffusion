@@ -246,14 +246,14 @@ class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
             scene = bpy.data.scenes.new(name=scene_name)
 
             # copy the mesh into the shading scene
-            shading_mesh = mesh.copy()
-            shading_mesh.data = mesh.data.copy()
-            shading_mesh.name = f"{mesh.name}_shading"
-            shading_mesh.data.name = f"{mesh.name}_shading"
+            scene_mesh = mesh.copy()
+            scene_mesh.data = mesh.data.copy()
+            scene_mesh.name = f"{mesh.name}_shading"
+            scene_mesh.data.name = f"{mesh.name}_shading"
 
-            scene.collection.objects.link(shading_mesh)
+            scene.collection.objects.link(scene_mesh)
 
-            scene[shading_mesh_prop_name] = shading_mesh
+            scene[shading_mesh_prop_name] = scene_mesh
 
             return scene
 
