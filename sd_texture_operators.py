@@ -271,7 +271,10 @@ class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
             if not obj.type == "MESH":
                 self.report({'ERROR'}, f"Object {obj.name} is not a mesh")
 
-            if obj["UV Map name"] not in obj.data.uv_layers.keys():
+            if obj[uv_layer_proj_prop_name] not in obj.data.uv_layers.keys():
+                self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
+
+            if obj[uv_layer_proj_mirrored_prop_name] not in obj.data.uv_layers.keys():
                 self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
 
             uv_layer = obj[uv_layer_proj_prop_name]
