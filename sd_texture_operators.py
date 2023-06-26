@@ -2,7 +2,7 @@ from math import radians
 
 import bpy
 
-from . import materials
+# from . import materials_baking
 from . import sd_texture_functions
 
 subject_prop_name = "Subject mesh"

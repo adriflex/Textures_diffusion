@@ -4,7 +4,7 @@ from math import radians
 import bpy
 from bpy.types import Camera, LayerCollection, Mesh, Scene
 
-from . import materials
+from . import materials_baking
 
 subject_prop_name = "Subject mesh"
 proj_collection_prop_name = "Proj collection"
@@ -110,7 +110,7 @@ def render_normal(render_path: str):
     world.use_nodes = True
     world.node_tree.nodes["Background"].inputs[0].default_value = (0.5, 0.5, 1.0, 1.0)
 
-    normal_material = materials.create_normal_material()
+    normal_material = materials_baking.create_normal_material()
 
     normal_scene.view_layers["ViewLayer"].material_override = normal_material
 
@@ -144,7 +144,7 @@ def render_depth(render_path: str, mesh_collection: LayerCollection):
 
     scene_depth = get_scene_depth(camera, mesh_collection)
 
-    depth_material = materials.create_depth_material(scene_depth["min"], scene_depth["max"])
+    depth_material = materials_baking.create_depth_material(scene_depth["min"], scene_depth["max"])
 
     depth_scene.view_layers["ViewLayer"].material_override = depth_material
 
@@ -172,7 +172,7 @@ def render_facing(obj: Mesh, render_path: str):
     if obj.active_material:
         backup_mat = obj.active_material
 
-    facing_material = materials.create_facing_material()
+    facing_material = materials_baking.create_facing_material()
     obj.active_material = facing_material
 
     # image to bake into
@@ -244,7 +244,7 @@ def render_camera_occlusion(obj: Mesh, render_path: str):
     if obj.active_material:
         backup_mat = obj.active_material
 
-    diffuse_material = materials.create_diffuse_material()
+    diffuse_material = materials_baking.create_diffuse_material()
     obj.active_material = diffuse_material
 
     image_name = f"{obj.name}_camera_occlusion"
