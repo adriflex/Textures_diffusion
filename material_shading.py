@@ -857,7 +857,7 @@ def proj_node_group(proj_name, uv_proj_name, uv_proj_mirrored_name) -> bpy.types
     return proj
 
 
-def clean_map_proj(proj_name: str, proj_nodegroup: ShaderNodeTree) -> Material:
+def clean_map_proj_material(proj_name: str, proj_nodegroup: ShaderNodeTree) -> Material:
     mat = bpy.data.materials.new(name=f"clean_map_{proj_name}")
     mat.use_nodes = True
 

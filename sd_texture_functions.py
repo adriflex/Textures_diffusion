@@ -333,3 +333,26 @@ def transfer_uvs(obj_from, obj_to, uv_layer_name):
         obj_to.data.uv_layers.new(name=uv_layer_name)
     obj_to.data.uv_layers[uv_layer_name].active = True
     bpy.ops.object.join_uvs()
+
+
+def clone_collection(context, collection: LayerCollection, name: str):
+    new_collection = bpy.data.collections.new(name)
+    context.scene.collection.children.link(new_collection)
+
+    for obj in collection.objects:
+        # new name should be the same as the old one + "projection_tweaks"
+        new_obj = obj.copy()
+        new_obj.data = obj.data.copy()
+        new_obj.name = obj.name + "_projection_tweaks"
+        new_obj.data.name = obj.data.name + "_copy"
+        new_collection.objects.link(new_obj)
+
+    return new_collection
+
+
+def add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera):
+    uv_project_modifier = obj.modifiers.new(name="UVProject", type='UV_PROJECT')
+    uv_project_modifier.uv_layer = uv_layer
+    uv_project_modifier.aspect_x = aspect_x
+    uv_project_modifier.aspect_y = aspect_y
+    uv_project_modifier.projectors[0].object = camera

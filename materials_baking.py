@@ -189,7 +189,3 @@ def create_diffuse_material() -> bpy.types.Material:
 
     material_node_group()
     return mat
-
-
-def create_sd_shading_mat() -> bpy.types.Material:
-    return  # todo mat

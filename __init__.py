@@ -21,11 +21,11 @@ if "bpy" in locals():
 from . import sd_texture_operators
 
 register_classes = [
-    sd_texture_operators.SDTextureProj_OT_CreateProjScene,
+    sd_texture_operators.SDTextureProj_OT_CreateNewProjScene,
     sd_texture_operators.SDTextureProj_OT_RenderRefImg,
     sd_texture_operators.SDTextureProj_OT_BakeProjMasks,
     sd_texture_operators.SDTextureProj_OT_CreateProjUVs,
-    sd_texture_operators.SDTextureProj_OT_CreateShadingScene,
+    sd_texture_operators.SDTextureProj_OT_CreateNewShadingScene,
 ]
 
 

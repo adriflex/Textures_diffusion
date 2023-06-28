@@ -15,12 +15,16 @@ camera_occlusion_mirrored_prop_name = "Camera occlusion mirrored"
 uv_layer_proj_prop_name = "UV layer projection"
 uv_layer_proj_mirrored_prop_name = "UV layer projection mirrored"
 shading_mesh_prop_name = "Shading mesh"
+projection_scene_prop_name = "Projection scene"
+breakdown_collection_prop_name = "Breakdown collection"
+final_mesh_collection_prop_name = "Final mesh collection"
+tweaking_collection_prop_name = "Tweaking collection"
 
 
-class SDTextureProj_OT_CreateProjScene(bpy.types.Operator):
-    bl_idname = "sd_texture_proj.create_scene"
-    bl_label = "Create scene"
-    bl_description = "Create a scene to bake maps to send to Stable Diffusion"
+class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.create_new_scene"
+    bl_label = "Create new projection scene"
+    bl_description = "Create a projection scene to create data for Stable Diffusion and shading scene"
 
     # poll function
     @classmethod
@@ -31,7 +35,7 @@ class SDTextureProj_OT_CreateProjScene(bpy.types.Operator):
         # Duplicate the active object and link it to the subjects collection
         active_obj = context.active_object
 
-        sd_proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD textures bake")
+        sd_proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD projection scene")
 
         mesh_collection = bpy.data.collections.new(name=f"{active_obj.name} projection meshes")
         sd_proj_scene.collection.children.link(mesh_collection)
@@ -222,17 +226,12 @@ class SDTextureProj_OT_CreateProjUVs(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
-    bl_idname = "sd_texture_proj.create_shading_scene"
-    bl_label = "Create shading scene"
-    bl_description = "Create a shading scene to apply the SD textures"
+class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.create_new_shading_scene"
+    bl_label = "Create new shading scene"
+    bl_description = "Create a new shading scene to apply the SD generated texture"
 
     def execute(self, context):
-        # sd_scene_data = sd_texture_functions.get_sd_setup_scene_data()
-        # sd_meshes_data = sd_texture_functions.get_sd_scene_meshes(sd_scene_data)
-        # subject_mesh = sd_scene_data["subject_mesh"]
-        # subject_name = subject_mesh.name
-        # mesh_collection = sd_scene_data["mesh_collection"]
 
         proj_scene = context.scene
         subject_mesh = proj_scene[subject_prop_name]
@@ -241,31 +240,7 @@ class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
 
         shading_scene_name = f"{subject_name} SD shading"
 
-        def create_shading_scene(scene_name: str, mesh) -> bpy.types.Scene:
-            # create a new scene for the shading
-            scene = bpy.data.scenes.new(name=scene_name)
-
-            # copy the mesh into the shading scene
-            scene_mesh = mesh.copy()
-            scene_mesh.data = mesh.data.copy()
-            scene_mesh.name = f"{mesh.name}_shading"
-            scene_mesh.data.name = f"{mesh.name}_shading"
-
-            scene.collection.objects.link(scene_mesh)
-
-            scene[shading_mesh_prop_name] = scene_mesh
-
-            return scene
-
-        if shading_scene_name not in bpy.data.scenes:
-            shading_scene = create_shading_scene(shading_scene_name, subject_mesh)
-        else:
-            shading_scene = bpy.data.scenes[shading_scene_name]
-
-        # transfer proj UVs
-        context.window.scene = shading_scene
-        shading_mesh = shading_scene[shading_mesh_prop_name]
-        shading_scene.collection.children.link(proj_mesh_collection)
+        # check if the proj mesh collection is ok
 
         for obj in proj_mesh_collection.objects:
             if not obj.type == "MESH":
@@ -277,6 +252,50 @@ class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
             if obj[uv_layer_proj_mirrored_prop_name] not in obj.data.uv_layers.keys():
                 self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
 
+        # create a new scene for the shading
+
+        shading_scene = bpy.data.scenes.new(name=shading_scene_name)
+        context.window.scene = shading_scene
+
+        # copy the subject into the shading scene
+
+        shading_mesh = subject_mesh.copy()
+        shading_mesh.data = subject_mesh.data.copy()
+        shading_mesh.name = f"{subject_mesh.name}_shading"
+        shading_mesh.data.name = f"{subject_mesh.name}_shading"
+
+        final_shading_mesh_collection = bpy.data.collections.new(name=f"{shading_scene_name} final assembly")
+        shading_scene.collection.children.link(final_shading_mesh_collection)
+
+        final_shading_mesh_collection.objects.link(shading_mesh)
+
+        shading_scene[shading_mesh_prop_name] = shading_mesh
+        shading_scene[projection_scene_prop_name] = proj_scene
+        shading_scene[final_mesh_collection_prop_name] = final_shading_mesh_collection
+
+        #todo : add material
+
+        # create collection for tweaking
+
+        tweak_mesh_collection = sd_texture_functions.clone_collection(context, proj_mesh_collection,
+                                                                      f"{shading_scene_name} projection tweaks")
+        shading_scene.view_layers[0].layer_collection.children[tweak_mesh_collection.name].hide_viewport = True
+
+        aspect_x = proj_scene.render.resolution_x
+        aspect_y = proj_scene.render.resolution_y
+        camera = proj_scene.camera
+
+        for obj in tweak_mesh_collection.objects:
+            uv_layer = obj.data.uv_layers[0].name
+            sd_texture_functions.add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera)
+
+        # todo : add material
+
+        # transfer proj UVs
+
+        shading_scene.collection.children.link(proj_mesh_collection)
+
+        for obj in tweak_mesh_collection.objects:
             uv_layer = obj[uv_layer_proj_prop_name]
             uv_layer_mirrored = obj[uv_layer_proj_mirrored_prop_name]
 
@@ -285,9 +304,24 @@ class SDTextureProj_OT_CreateShadingScene(bpy.types.Operator):
 
         shading_scene.collection.children.unlink(proj_mesh_collection)
 
-        # create a new material for the shading
-        shading_mat = materials.create_sd_shading_mat()  # todo create mat function
+        # create a new collection "breakdown"
 
-        # todo assign the material to the shading mesh
+        breakdown_collection = bpy.data.collections.new(name=f"{shading_scene_name} breakdown")
+        shading_scene.collection.children.link(breakdown_collection)
+        shading_scene[breakdown_collection_prop_name] = breakdown_collection
+        shading_scene.view_layers[0].layer_collection.children[breakdown_collection.name].hide_viewport = True
+
+        offset = 0
+        for obj in proj_mesh_collection.objects:
+            # duplicate the shading_mesh and move it sideways
+            new_shading_mesh = shading_mesh.copy()
+            new_shading_mesh.name = f"{obj.name}_projection_shading"
+            offset += shading_mesh.dimensions[0] + 0.5
+            new_shading_mesh.location.x = offset
+            breakdown_collection.objects.link(new_shading_mesh)
+
+        # todo : add material
 
         return {'FINISHED'}
+
+# todo : a operator to transfer the tweaked uvs
