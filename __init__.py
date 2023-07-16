@@ -17,8 +17,10 @@ if "bpy" in locals():
     if "sd_texture_operators" in locals():
         importlib.reload(sd_texture_operators)
         importlib.reload(sd_texture_functions)
+        importlib.reload(sd_texture_ui)
 
 from . import sd_texture_operators
+from . import sd_texture_ui
 
 register_classes = [
     sd_texture_operators.SDTextureProj_OT_CreateNewProjScene,
@@ -26,11 +28,18 @@ register_classes = [
     sd_texture_operators.SDTextureProj_OT_BakeProjMasks,
     sd_texture_operators.SDTextureProj_OT_CreateProjUVs,
     sd_texture_operators.SDTextureProj_OT_CreateNewShadingScene,
+    sd_texture_ui.SDTextureProj_PT_Panel,
 ]
 
 
 def register():
     for cls in register_classes:
+        bpy.types.Scene.img_generated_path = bpy.props.StringProperty(
+            name="IMG Generated Path",
+            description="Path to the Stable Diffusion image",
+            default="//",
+            subtype="FILE_PATH",
+        )
         bpy.utils.register_class(cls)
         print("Registered class: ", cls)
 

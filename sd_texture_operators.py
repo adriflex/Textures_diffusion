@@ -1,7 +1,6 @@
 from math import radians
 
 import bpy
-
 # from . import materials_baking
 from . import sd_texture_functions
 
@@ -19,17 +18,18 @@ projection_scene_prop_name = "Projection scene"
 breakdown_collection_prop_name = "Breakdown collection"
 final_mesh_collection_prop_name = "Final mesh collection"
 tweaking_collection_prop_name = "Tweaking collection"
+sd_gen_img_path_prop_name = "Stable diffusion image generated path"
 
 
 class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
-    bl_idname = "sd_texture_proj.create_new_scene"
+    bl_idname = "sd_texture_proj.create_new_proj_scene"
     bl_label = "Create new projection scene"
     bl_description = "Create a projection scene to create data for Stable Diffusion and shading scene"
 
     # poll function
     @classmethod
     def poll(cls, context):
-        return context.active_object is not None
+        return context.active_object and subject_prop_name not in context.scene
 
     def execute(self, context):
         # Duplicate the active object and link it to the subjects collection
@@ -71,7 +71,7 @@ class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
 
 
 class SDTextureProj_OT_RenderRefImg(bpy.types.Operator):
-    bl_idname = "sd_texture_proj.render_ref_images"
+    bl_idname = "sd_texture_proj.render_ref_img"
     bl_label = "Render ref images"
     bl_description = "Render image to use in Stable Diffusion"
 
@@ -183,6 +183,8 @@ class SDTextureProj_OT_CreateProjUVs(bpy.types.Operator):
     bl_label = "Create Projected UVs"
     bl_description = "Project the UVs of the collection from the camera"
 
+    # poll function
+
     def execute(self, context):
 
         proj_scene = context.scene
@@ -231,6 +233,12 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
     bl_label = "Create new shading scene"
     bl_description = "Create a new shading scene to apply the SD generated texture"
 
+    @classmethod
+    def poll(cls, context):
+        return proj_collection_prop_name in context.scene \
+            and img_dir_prop_name in context.scene \
+            and context.scene.img_generated_path != "//"
+
     def execute(self, context):
 
         proj_scene = context.scene
@@ -273,7 +281,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene[projection_scene_prop_name] = proj_scene
         shading_scene[final_mesh_collection_prop_name] = final_shading_mesh_collection
 
-        #todo : add material
+        # todo : add material
 
         # create collection for tweaking
 
