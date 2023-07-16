@@ -46,5 +46,6 @@ def register():
 
 def unregister():
     for cls in register_classes:
+        del bpy.types.Scene.img_generated_path
         bpy.utils.unregister_class(cls)
         print("Unregistered class: ", cls)
