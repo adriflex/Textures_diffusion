@@ -1,11 +1,10 @@
+import os
 import pathlib
 from math import radians
 
 import bpy
 from bpy.types import Camera, LayerCollection, Mesh, Scene
-
 from . import materials_baking
-from . import material_shading
 
 subject_prop_name = "Subject mesh"
 proj_collection_prop_name = "Proj collection"
@@ -357,3 +356,28 @@ def add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera):
     uv_project_modifier.aspect_x = aspect_x
     uv_project_modifier.aspect_y = aspect_y
     uv_project_modifier.projectors[0].object = camera
+
+
+def import_shading_material(mat_name):
+    filepath = os.path.join(os.path.dirname(__file__), "materials.blend")
+    with bpy.data.libraries.load(filepath) as (data_from, data_to):
+        data_to.materials = [mat_name]
+
+    if data_to.materials[0] is None:
+        raise ValueError("Material not found: ", mat_name)
+
+    print("Imported material: ", data_to.materials[0])
+    return data_to.materials[0]
+
+
+def import_shading_node_group(node_group_name):
+    filepath = os.path.join(os.path.dirname(__file__), "materials.blend")
+    with bpy.data.libraries.load(filepath) as (data_from, data_to):
+        data_to.node_groups = [node_group_name]
+
+    if data_to.node_groups[0] is None:
+        raise ValueError("Material not found: ", node_group_name)
+
+    print("Imported node group: ", data_to.node_groups[0])
+    return data_to.node_groups[0]
+

@@ -1,7 +1,6 @@
 from math import radians
 
 import bpy
-from . import material_shading
 # from . import materials_baking
 from . import sd_texture_functions
 
@@ -266,18 +265,15 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene = bpy.data.scenes.new(name=shading_scene_name)
         context.window.scene = shading_scene
 
-        # create materials and node trees
-        sd_gen_node_group = material_shading.create_sd_gen_node_group(img_gen_path)
-        uv_tweak_material = material_shading.create_tweak_uvs_material(sd_gen_node_group)
-
-
+        # create materials
+        # todo : create materials
 
         # copy the subject into the shading scene
 
         shading_mesh = subject_mesh.copy()
         shading_mesh.data = subject_mesh.data.copy()
-        shading_mesh.name = f"{subject_mesh.name}_shading"
-        shading_mesh.data.name = f"{subject_mesh.name}_shading"
+        shading_mesh.name = f"{subject_name}_shading"
+        shading_mesh.data.name = f"{subject_name}_shading"
 
         final_shading_mesh_collection = bpy.data.collections.new(name=f"{shading_scene_name} final assembly")
         shading_scene.collection.children.link(final_shading_mesh_collection)
@@ -303,9 +299,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         for obj in tweak_mesh_collection.objects:
             uv_layer = obj.data.uv_layers[0].name
             sd_texture_functions.add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera)
-
-            # assign the tweak material
-            obj.data.materials.append(uv_tweak_material)
 
         # transfer proj UVs
 
