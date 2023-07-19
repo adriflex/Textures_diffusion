@@ -5,6 +5,7 @@ import bpy
 from bpy.types import Camera, LayerCollection, Mesh, Scene
 
 from . import materials_baking
+from . import material_shading
 
 subject_prop_name = "Subject mesh"
 proj_collection_prop_name = "Proj collection"

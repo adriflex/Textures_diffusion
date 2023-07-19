@@ -1,6 +1,7 @@
 from math import radians
 
 import bpy
+from . import material_shading
 # from . import materials_baking
 from . import sd_texture_functions
 
@@ -245,6 +246,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         subject_mesh = proj_scene[subject_prop_name]
         subject_name = subject_mesh.name
         proj_mesh_collection = proj_scene[proj_collection_prop_name]
+        img_gen_path = context.scene.img_generated_path
 
         shading_scene_name = f"{subject_name} SD shading"
 
@@ -261,9 +263,14 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
                 self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
 
         # create a new scene for the shading
-
         shading_scene = bpy.data.scenes.new(name=shading_scene_name)
         context.window.scene = shading_scene
+
+        # create materials and node trees
+        sd_gen_node_group = material_shading.create_sd_gen_node_group(img_gen_path)
+        uv_tweak_material = material_shading.create_tweak_uvs_material(sd_gen_node_group)
+
+
 
         # copy the subject into the shading scene
 
@@ -297,7 +304,8 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             uv_layer = obj.data.uv_layers[0].name
             sd_texture_functions.add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera)
 
-        # todo : add material
+            # assign the tweak material
+            obj.data.materials.append(uv_tweak_material)
 
         # transfer proj UVs
 

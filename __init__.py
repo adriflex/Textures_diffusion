@@ -17,6 +17,7 @@ if "bpy" in locals():
     if "sd_texture_operators" in locals():
         importlib.reload(sd_texture_operators)
         importlib.reload(sd_texture_functions)
+        importlib.reload(material_shading)
         importlib.reload(sd_texture_ui)
 
 from . import sd_texture_operators
