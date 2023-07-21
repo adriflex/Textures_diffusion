@@ -14,6 +14,7 @@ camera_occlusion_mirrored_prop_name = "Camera occlusion mirrored"
 uv_layer_proj_prop_name = "UV layer projection"
 uv_layer_proj_mirrored_prop_name = "UV layer projection mirrored"
 shading_mesh_prop_name = "Shading mesh"
+gen_node_group_prop_name = "SD Gen node group"
 projection_scene_prop_name = "Projection scene"
 breakdown_collection_prop_name = "Breakdown collection"
 final_mesh_collection_prop_name = "Final mesh collection"
@@ -269,6 +270,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
 
         # create Stable Diffusion gen group node
         sd_gen_node_group = sd_texture_functions.create_sd_gen_node_group(img_gen_path)
+        shading_scene[gen_node_group_prop_name] = sd_gen_node_group
 
         # copy the subject into the shading scene
 
@@ -292,6 +294,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         tweak_mesh_collection = sd_texture_functions.clone_collection(context, proj_mesh_collection,
                                                                       f"{shading_scene_name} projection tweaks")
         shading_scene.view_layers[0].layer_collection.children[tweak_mesh_collection.name].hide_viewport = True
+        shading_scene[tweaking_collection_prop_name] = tweak_mesh_collection
 
         aspect_x = proj_scene.render.resolution_x
         aspect_y = proj_scene.render.resolution_y
@@ -369,7 +372,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             new_shading_mesh.material_slots[0].link = "OBJECT"
             new_shading_mesh.material_slots[0].material = proj_material
 
-
         # create Subject final material
         final_assembly_material = sd_texture_functions.create_final_assembly_material(proj_node_groups,
                                                                                       sd_gen_node_group)
@@ -381,4 +383,63 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
 
         return {'FINISHED'}
 
-# todo : a operator to transfer the tweaked uvs
+
+class SD_OT_transfer_tweaked_uvs(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.transfer_tweaked_uvs"
+    bl_label = "Transfer projection tweaks"
+    bl_description = "Transfer projection tweaks to the shading mesh and the breakdown collection meshes"
+
+    @classmethod
+    def poll(cls, context):
+        tweaking_collection_exists = tweaking_collection_prop_name in context.scene
+        shading_mesh_exists = shading_mesh_prop_name in context.scene
+        proj_scene_exists = projection_scene_prop_name in context.scene
+
+        return tweaking_collection_exists and shading_mesh_exists and proj_scene_exists
+
+    def execute(self, context):
+        active_scene = context.scene
+
+        tweaking_collection = active_scene[tweaking_collection_prop_name]
+        shading_mesh = active_scene[shading_mesh_prop_name]
+
+        proj_scene_camera = active_scene[projection_scene_prop_name].camera
+        active_scene.collection.objects.link(proj_scene_camera)
+
+        for obj in tweaking_collection.objects:
+            uv_layer = obj[uv_layer_proj_prop_name]
+            uv_layer_mirrored = obj[uv_layer_proj_mirrored_prop_name]
+
+            sd_texture_functions.project_uvs_from_camera(obj, proj_scene_camera, uv_layer)
+            sd_texture_functions.mirror_obj(obj, "X")
+
+            sd_texture_functions.project_uvs_from_camera(obj, proj_scene_camera, uv_layer_mirrored)
+            sd_texture_functions.mirror_obj(obj, "X")
+
+            sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer)
+            sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer_mirrored)
+
+        # unlink the camera
+        active_scene.collection.objects.unlink(proj_scene_camera)
+
+        return {'FINISHED'}
+
+# a reload SD gen path operator
+class SD_OT_reload_sd_img_path(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.reload_sd_img_path"
+    bl_label = "Reload SD image path"
+    bl_description = "Reload the Sable Diffusion image Path into the Stable_diffusion_gen node group"
+
+    @classmethod
+    def poll(cls, context):
+        gen_node_group_exist = gen_node_group_prop_name in context.scene
+        img_generated_path_exist = "img_generated_path" in context.scene
+        return gen_node_group_exist and img_generated_path_exist
+
+    def execute(self, context):
+        new_img_generated_path = context.scene.img_generated_path
+        gen_node_group = context.scene[gen_node_group_prop_name]
+
+        sd_texture_functions.get_node('Stable_diffusion_gen', gen_node_group).image.filepath = new_img_generated_path
+
+        return {'FINISHED'}

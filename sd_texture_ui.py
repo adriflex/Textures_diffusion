@@ -23,5 +23,7 @@ class SDTextureProj_PT_Panel(bpy.types.Panel):
 
         column1 = layout.column(align=True)
         column1.operator("sd_texture_proj.create_new_shading_scene", icon="MATSHADERBALL")
+        column1.operator("sd_texture_proj.transfer_tweaked_uvs")
+        column1.operator("sd_texture_proj.reload_sd_img_path")
 
 # todo another panel for the settings
