@@ -33,6 +33,7 @@ register_classes = [
     sd_texture_operators.SD_OT_transferTweakedUvs,
     sd_texture_operators.SD_OT_reloadSdImgPath,
     sd_texture_operators.SD_OT_paintCustomMask,
+    sd_texture_operators.SD_OT_tweakProjection,
     properties.sd_texture_prop_group,
     sd_texture_ui.SDTextureProj_PT_Panel,
 ]

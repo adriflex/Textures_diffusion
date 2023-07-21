@@ -169,7 +169,8 @@ class SDTextureProj_OT_BakeProjMasks(bpy.types.Operator):
                 sd_texture_functions.mirror_obj(obj, "X")
 
                 sd_texture_functions.render_facing(obj, facing_mirrored_path, masks_resolution, mask_samples)
-                sd_texture_functions.render_camera_occlusion(obj, camera_occlusion_mirrored_path, masks_resolution, mask_samples)
+                sd_texture_functions.render_camera_occlusion(obj, camera_occlusion_mirrored_path, masks_resolution,
+                                                             mask_samples)
 
                 sd_texture_functions.mirror_obj(obj, "X")
 
@@ -269,7 +270,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             if obj[uv_layer_proj_prop_name] not in obj.data.uv_layers.keys():
                 self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
 
-
         # create a new scene for the shading
         shading_scene = bpy.data.scenes.new(name=shading_scene_name)
         context.window.scene = shading_scene
@@ -355,7 +355,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             custom_mask_image.filepath_raw = f"{proj_scene[img_dir_prop_name]}/Masks/{custom_mask_image.name}.exr"
             custom_mask_image.file_format = 'OPEN_EXR'
 
-
             custom_mask_image.save()
 
             # create Subject proj material
@@ -373,7 +372,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
                 proj_data["proj_uv_layer_mirrored"] = obj[uv_layer_proj_mirrored_prop_name]
                 proj_data["cam_occlusion_mirrored"] = obj[camera_occlusion_mirrored_prop_name]
                 proj_data["facing_mask_mirrored"] = obj[facing_path_mirrored_prop_name]
-
 
             # create material
             proj_node_group = sd_texture_functions.create_proj_node_group(proj_data)
@@ -403,6 +401,26 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class SD_OT_reloadSdImgPath(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.reload_sd_img_path"
+    bl_label = "Reload SD image path"
+    bl_description = "Reload the Sable Diffusion image Path into the Stable_diffusion_gen node group"
+
+    @classmethod
+    def poll(cls, context):
+        gen_node_group_exist = gen_node_group_prop_name in context.scene
+        img_generated_path_exist = "img_generated_path" in context.scene.sd_texture_props
+        return gen_node_group_exist and img_generated_path_exist
+
+    def execute(self, context):
+        new_img_generated_path = context.scene.sd_texture_props.img_generated_path
+        gen_node_group = context.scene[gen_node_group_prop_name]
+
+        sd_texture_functions.get_node('Stable_diffusion_gen', gen_node_group).image.filepath = new_img_generated_path
+
+        return {'FINISHED'}
+
+
 class SD_OT_transferTweakedUvs(bpy.types.Operator):
     bl_idname = "sd_texture_proj.transfer_tweaked_uvs"
     bl_label = "Transfer projection tweaks"
@@ -417,6 +435,10 @@ class SD_OT_transferTweakedUvs(bpy.types.Operator):
         return tweaking_collection_exists and shading_mesh_exists and proj_scene_exists
 
     def execute(self, context):
+        # if edit mode exit
+        if context.mode == 'EDIT_MESH':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
         active_scene = context.scene
 
         tweaking_collection = active_scene[tweaking_collection_prop_name]
@@ -428,7 +450,6 @@ class SD_OT_transferTweakedUvs(bpy.types.Operator):
 
         for obj in tweaking_collection.objects:
             active_scene.view_layers[0].layer_collection.children[final_mesh_collection.name].hide_viewport = False
-
 
             uv_layer = obj[uv_layer_proj_prop_name]
 
@@ -451,27 +472,6 @@ class SD_OT_transferTweakedUvs(bpy.types.Operator):
         return {'FINISHED'}
 
 
-# a reload SD gen path operator
-class SD_OT_reloadSdImgPath(bpy.types.Operator):
-    bl_idname = "sd_texture_proj.reload_sd_img_path"
-    bl_label = "Reload SD image path"
-    bl_description = "Reload the Sable Diffusion image Path into the Stable_diffusion_gen node group"
-
-    @classmethod
-    def poll(cls, context):
-        gen_node_group_exist = gen_node_group_prop_name in context.scene
-        img_generated_path_exist = "img_generated_path" in context.scene.sd_texture_props
-        return gen_node_group_exist and img_generated_path_exist
-
-    def execute(self, context):
-        new_img_generated_path = context.scene.sd_texture_props.img_generated_path
-        gen_node_group = context.scene[gen_node_group_prop_name]
-
-        sd_texture_functions.get_node('Stable_diffusion_gen', gen_node_group).image.filepath = new_img_generated_path
-
-        return {'FINISHED'}
-
-# operator to enter painting mode and paint the custom mask as single image and this the first uv layer
 class SD_OT_paintCustomMask(bpy.types.Operator):
     bl_idname = "sd_texture_proj.paint_custom_mask"
     bl_label = "Paint custom mask"
@@ -491,5 +491,25 @@ class SD_OT_paintCustomMask(bpy.types.Operator):
         bpy.context.scene.tool_settings.image_paint.canvas = custom_mask_image
         # set uv_layer 0 active
         context.active_object.data.uv_layers.active_index = 0
+
+        return {'FINISHED'}
+
+
+class SD_OT_tweakProjection(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.tweak_projection"
+    bl_label = "Tweak projection"
+    bl_description = "Enter edit mode and tweak the projection of the selected object"
+
+    @classmethod
+    def poll(cls, context):
+        UVProject_modifier_exists = "UVProject" in context.active_object.modifiers
+        return UVProject_modifier_exists
+
+    def execute(self, context):
+        if "Subdivision" in context.active_object.modifiers:
+            context.active_object.modifiers["Subdivision"].show_on_cage = True
+
+        bpy.ops.view3d.view_selected(use_all_regions=False)
+        bpy.ops.object.editmode_toggle()
 
         return {'FINISHED'}

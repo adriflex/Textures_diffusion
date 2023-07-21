@@ -45,7 +45,6 @@ class SDTextureProj_PT_Panel(bpy.types.Panel):
 
         column3 = layout.column(align=True)
         column3.operator("sd_texture_proj.create_new_shading_scene", icon="MATSHADERBALL")
-        column3.operator("sd_texture_proj.transfer_tweaked_uvs")
         column3.operator("sd_texture_proj.reload_sd_img_path")
 
         if "Custom mask" in context.active_object:
@@ -53,5 +52,12 @@ class SDTextureProj_PT_Panel(bpy.types.Panel):
             column4.label(text="Custom mask :")
             column4.operator("sd_texture_proj.paint_custom_mask")
             column4.operator("image.save_all_modified", text="Save all images", icon='FILE_TICK')
+
+        if "UVProject" in context.active_object.modifiers:
+            column7 = layout.column(align=True)
+            column7.label(text="Projection tweaks :")
+            column7.operator("sd_texture_proj.tweak_projection", text="Edit tweaks")
+            column7.operator("sd_texture_proj.transfer_tweaked_uvs", text="Transfer tweaks")
+
 
 # todo another panel for the settings
