@@ -3,7 +3,7 @@ import pathlib
 from math import radians
 
 import bpy
-from bpy.types import Camera, LayerCollection, Mesh, Scene
+from bpy.types import Camera, LayerCollection, Mesh, Scene, Material, NodeGroup, Node, NodeTree, Image
 from . import materials_baking
 
 subject_prop_name = "Subject mesh"
@@ -358,7 +358,9 @@ def add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera):
     uv_project_modifier.projectors[0].object = camera
 
 
-def import_shading_material(mat_name):
+# shading scene functions
+
+def import_shading_material(mat_name) -> Material:
     filepath = os.path.join(os.path.dirname(__file__), "materials.blend")
     with bpy.data.libraries.load(filepath) as (data_from, data_to):
         data_to.materials = [mat_name]
@@ -370,7 +372,7 @@ def import_shading_material(mat_name):
     return data_to.materials[0]
 
 
-def import_shading_node_group(node_group_name):
+def import_shading_node_group(node_group_name) -> NodeGroup:
     filepath = os.path.join(os.path.dirname(__file__), "materials.blend")
     with bpy.data.libraries.load(filepath) as (data_from, data_to):
         data_to.node_groups = [node_group_name]
@@ -381,3 +383,114 @@ def import_shading_node_group(node_group_name):
     print("Imported node group: ", data_to.node_groups[0])
     return data_to.node_groups[0]
 
+
+def get_node(base_name: str, node_tree: NodeTree) -> Node:
+    for node in node_tree.nodes:
+        if node.name.startswith(base_name):
+            return node
+    raise ValueError("Node not found: ", base_name)
+
+
+def create_sd_gen_node_group(img_path) -> NodeGroup:
+    base_node_group = import_shading_node_group("Stable_diffusion_gen")
+    sd_img = bpy.data.images.load(img_path)
+    base_node_group.nodes['Stable_diffusion_gen_image'].image = sd_img
+
+    print("Created SD gen node group: ", base_node_group.name)
+
+    return base_node_group
+
+
+def create_tweak_uvs_material(sg_gen_node_group) -> Material:
+    tweak_uvs_material = import_shading_material("Projections_tweaks_uvs")
+    tweak_uvs_material.node_tree.nodes['Stable_diffusion_gen'].node_tree = sg_gen_node_group
+
+    print("Created tweak UVs material: ", tweak_uvs_material.name)
+
+    return tweak_uvs_material
+
+
+def create_proj_node_group(proj_data: dict) -> NodeGroup:
+    node_tree = import_shading_node_group("Proj")
+    node_tree.name = proj_data['proj_mesh_name'] + "_proj"
+
+    get_node('UV Proj', node_tree)
+
+    get_node('UV Proj base', node_tree).uv_map = proj_data['proj_uv_layer']
+    get_node('UV Proj mirrored', node_tree).uv_map = proj_data['proj_uv_layer_mirrored']
+    get_node('Stable_diffusion_gen base', node_tree).node_tree = proj_data['sd_gen_node_group']
+    get_node('Stable_diffusion_gen mirrored', node_tree).node_tree = proj_data['sd_gen_node_group']
+
+    # todo idea : system L and R instead of mirrored
+
+    settings_masks_node_tree = get_node('Settings masks proj', node_tree).node_tree
+
+    # create new images
+    cam_occlusion_image = bpy.data.images.load(proj_data['cam_occlusion'])
+    cam_occlusion_mirrored_image = bpy.data.images.load(proj_data['cam_occlusion_mirrored'])
+    facing_mask_image = bpy.data.images.load(proj_data['facing_mask'])
+    facing_mask_mirrored_image = bpy.data.images.load(proj_data['facing_mask_mirrored'])
+
+    # set images
+    get_node('Custom mask', settings_masks_node_tree).image = proj_data['custom_mask_image']
+    get_node('Mask cam occlu base', settings_masks_node_tree).image = cam_occlusion_image
+    get_node('Mask cam occlu mirrored', settings_masks_node_tree).image = cam_occlusion_mirrored_image
+
+    get_node('Facing mask base', settings_masks_node_tree).image = facing_mask_image
+    get_node('Facing mask mirrored', settings_masks_node_tree).image = facing_mask_mirrored_image
+
+    print("Created projection node group: ", node_tree.name)
+
+    return node_tree
+
+
+def create_proj_material(proj_mesh_name, proj_node_group: Node, custom_mask_image: Image) -> Material:
+    proj_material = import_shading_material("Projections_cleaning")
+    proj_material.name = proj_mesh_name + "_Projections_cleaning"
+    node_tree = proj_material.node_tree
+    get_node('Proj', node_tree).node_tree = proj_node_group
+    get_node('Custom mask', node_tree).image = custom_mask_image
+
+    print("Created projection material: ", proj_material.name)
+
+    return proj_material
+
+
+def create_final_assembly_material(proj_node_groups: list, sd_gen_node_group: NodeGroup):
+    final_assembly_material = import_shading_material("Projections_assembly")
+    node_tree = final_assembly_material.node_tree
+
+    last_mix_rgb = None
+    for i, proj_node_group in enumerate(reversed(proj_node_groups)):
+
+        projection_node_group = node_tree.nodes.new('ShaderNodeGroup')
+        projection_node_group.node_tree = proj_node_group
+        projection_node_group.location = (-360, 400 - 200 * i)
+        projection_node_group.name = "Projection " + str(i)
+        projection_node_group.label = "Projection " + str(i)
+
+        mix_shader = node_tree.nodes.new('ShaderNodeMixRGB')
+        mix_shader.name = "Mix " + str(i)
+        mix_shader.inputs[1].default_value = (0.5, 0.5, 0.5, 1.0)
+        mix_shader.location = (-160, 400 - 200 * i)
+
+        # links
+        node_tree.links.new(projection_node_group.outputs['Mask'], mix_shader.inputs[0])
+
+        if last_mix_rgb is not None:
+            node_tree.links.new(last_mix_rgb.outputs['Color'], mix_shader.inputs[1])
+
+        last_mix_rgb = mix_shader
+
+        node_tree.links.new(projection_node_group.outputs['Color'], mix_shader.inputs[2])
+
+    input_reroute = get_node('input_mix_projections_node_group', node_tree)
+    node_tree.links.new(last_mix_rgb.outputs['Color'], input_reroute.inputs[0])
+
+    # setup SD gen
+    sd_gen_node = get_node('Stable_diffusion_gen', node_tree)
+    sd_gen_node.node_tree = sd_gen_node_group
+
+    print("Created final assembly material: ", final_assembly_material.name)
+
+    return final_assembly_material

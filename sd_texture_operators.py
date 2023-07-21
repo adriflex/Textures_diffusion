@@ -18,7 +18,9 @@ projection_scene_prop_name = "Projection scene"
 breakdown_collection_prop_name = "Breakdown collection"
 final_mesh_collection_prop_name = "Final mesh collection"
 tweaking_collection_prop_name = "Tweaking collection"
-sd_gen_img_path_prop_name = "Stable diffusion image generated path"
+
+
+# sd_gen_img_path_prop_name = "Stable diffusion image generated path"
 
 
 class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
@@ -265,8 +267,8 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene = bpy.data.scenes.new(name=shading_scene_name)
         context.window.scene = shading_scene
 
-        # create materials
-        # todo : create materials
+        # create Stable Diffusion gen group node
+        sd_gen_node_group = sd_texture_functions.create_sd_gen_node_group(img_gen_path)
 
         # copy the subject into the shading scene
 
@@ -283,8 +285,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene[shading_mesh_prop_name] = shading_mesh
         shading_scene[projection_scene_prop_name] = proj_scene
         shading_scene[final_mesh_collection_prop_name] = final_shading_mesh_collection
-
-        # todo : add material
+        shading_scene.img_generated_path = img_gen_path
 
         # create collection for tweaking
 
@@ -301,7 +302,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             sd_texture_functions.add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera)
 
         # transfer proj UVs
-
         shading_scene.collection.children.link(proj_mesh_collection)
 
         for obj in tweak_mesh_collection.objects:
@@ -313,6 +313,13 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
 
         shading_scene.collection.children.unlink(proj_mesh_collection)
 
+        # create the tweak uvs material
+        tweak_uvs_mat = sd_texture_functions.create_tweak_uvs_material(sd_gen_node_group)
+
+        for obj in tweak_mesh_collection.objects:
+            obj.data.materials.clear()
+            obj.data.materials.append(tweak_uvs_mat)
+
         # create a new collection "breakdown"
 
         breakdown_collection = bpy.data.collections.new(name=f"{shading_scene_name} breakdown")
@@ -321,15 +328,50 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene.view_layers[0].layer_collection.children[breakdown_collection.name].hide_viewport = True
 
         offset = 0
+        proj_node_groups = []
         for obj in proj_mesh_collection.objects:
             # duplicate the shading_mesh and move it sideways
             new_shading_mesh = shading_mesh.copy()
+            new_shading_mesh.data = shading_mesh.data.copy()
             new_shading_mesh.name = f"{obj.name}_projection_shading"
             offset += shading_mesh.dimensions[0] + 0.5
             new_shading_mesh.location.x = offset
             breakdown_collection.objects.link(new_shading_mesh)
 
-        # todo : add material
+            # create custom map image
+            custom_mask_image = bpy.data.images.new(name=f"{obj.name}_custom_mask", width=1024, height=1024)
+            custom_mask_image.generated_color = (0, 0, 0, 0)
+
+            # create Subject proj material
+            proj_data = {
+                "proj_mesh_name": obj.name,
+                "proj_uv_layer": obj[uv_layer_proj_prop_name],
+                "proj_uv_layer_mirrored": obj[uv_layer_proj_mirrored_prop_name],
+                "sd_gen_node_group": sd_gen_node_group,
+                "custom_mask_image": custom_mask_image,
+                "cam_occlusion": obj[camera_occlusion_prop_name],
+                "cam_occlusion_mirrored": obj[camera_occlusion_mirrored_prop_name],
+                "facing_mask": obj[facing_path_prop_name],
+                "facing_mask_mirrored": obj[facing_path_mirrored_prop_name],
+            }
+
+            # create material
+            proj_node_group = sd_texture_functions.create_proj_node_group(proj_data)
+            proj_node_groups.append(proj_node_group)
+
+            proj_material = sd_texture_functions.create_proj_material(obj.name, proj_node_group, custom_mask_image)
+
+            # append material at object level
+            shading_mesh.data.materials.clear()
+            new_shading_mesh.data.materials.append(None)
+            new_shading_mesh.material_slots[0].link = "OBJECT"
+            new_shading_mesh.material_slots[0].material = proj_material
+
+        # create Subject final material
+        final_assembly_material = sd_texture_functions.create_final_assembly_material(proj_node_groups,
+                                                                                      sd_gen_node_group)
+        shading_mesh.data.materials.clear()
+        shading_mesh.data.materials.append(final_assembly_material)
 
         return {'FINISHED'}
 
