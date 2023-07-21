@@ -18,6 +18,7 @@ projection_scene_prop_name = "Projection scene"
 breakdown_collection_prop_name = "Breakdown collection"
 final_mesh_collection_prop_name = "Final mesh collection"
 tweaking_collection_prop_name = "Tweaking collection"
+custom_mask_prop_name = "Custom mask"
 
 
 class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
@@ -110,6 +111,8 @@ class SDTextureProj_OT_RenderRefImg(bpy.types.Operator):
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
 
+        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+
         # tell the user the maps have been baked
         self.report({'INFO'}, "Baking done ! Check the folder 'SD_maps' in the same folder as the .blend file")
 
@@ -176,6 +179,8 @@ class SDTextureProj_OT_BakeProjMasks(bpy.types.Operator):
 
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
+
+        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
 
         for image in bpy.data.images:
             image.reload()
@@ -311,10 +316,11 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
 
         for obj in tweak_mesh_collection.objects:
             uv_layer = obj[uv_layer_proj_prop_name]
-            uv_layer_mirrored = obj[uv_layer_proj_mirrored_prop_name]
-
             sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer)
-            sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer_mirrored)
+
+            if shading_scene.sd_texture_props.use_mirror_X:
+                uv_layer_mirrored = obj[uv_layer_proj_mirrored_prop_name]
+                sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer_mirrored)
 
         shading_scene.collection.children.unlink(proj_mesh_collection)
 
@@ -344,22 +350,30 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             breakdown_collection.objects.link(new_shading_mesh)
 
             # create custom map image
-            custom_mask_image = bpy.data.images.new(name=f"{obj.name}_custom_mask", width=1024, height=1024)
+            custom_mask_image = bpy.data.images.new(name=f"{obj.name}_custom_mask", width=1024, height=1024, alpha=True)
             custom_mask_image.generated_color = (0, 0, 0, 0)
+            custom_mask_image.filepath_raw = f"{proj_scene[img_dir_prop_name]}/Masks/{custom_mask_image.name}.exr"
+            custom_mask_image.file_format = 'OPEN_EXR'
+
+
+            custom_mask_image.save()
 
             # create Subject proj material
             proj_data = {
                 "proj_mesh_name": obj.name,
                 "use_mirror_X": proj_scene.sd_texture_props.use_mirror_X,
                 "proj_uv_layer": obj[uv_layer_proj_prop_name],
-                "proj_uv_layer_mirrored": obj[uv_layer_proj_mirrored_prop_name],
                 "sd_gen_node_group": sd_gen_node_group,
                 "custom_mask_image": custom_mask_image,
                 "cam_occlusion": obj[camera_occlusion_prop_name],
-                "cam_occlusion_mirrored": obj[camera_occlusion_mirrored_prop_name],
                 "facing_mask": obj[facing_path_prop_name],
-                "facing_mask_mirrored": obj[facing_path_mirrored_prop_name],
             }
+
+            if shading_scene.sd_texture_props.use_mirror_X:
+                proj_data["proj_uv_layer_mirrored"] = obj[uv_layer_proj_mirrored_prop_name]
+                proj_data["cam_occlusion_mirrored"] = obj[camera_occlusion_mirrored_prop_name]
+                proj_data["facing_mask_mirrored"] = obj[facing_path_mirrored_prop_name]
+
 
             # create material
             proj_node_group = sd_texture_functions.create_proj_node_group(proj_data)
@@ -374,6 +388,9 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             new_shading_mesh.material_slots[0].link = "OBJECT"
             new_shading_mesh.material_slots[0].material = proj_material
 
+            # add custom prop custom mask image
+            new_shading_mesh[custom_mask_prop_name] = custom_mask_image
+
         # create Subject final material
         final_assembly_material = sd_texture_functions.create_final_assembly_material(proj_node_groups,
                                                                                       sd_gen_node_group)
@@ -386,7 +403,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class SD_OT_transfer_tweaked_uvs(bpy.types.Operator):
+class SD_OT_transferTweakedUvs(bpy.types.Operator):
     bl_idname = "sd_texture_proj.transfer_tweaked_uvs"
     bl_label = "Transfer projection tweaks"
     bl_description = "Transfer projection tweaks to the shading mesh and the breakdown collection meshes"
@@ -435,7 +452,7 @@ class SD_OT_transfer_tweaked_uvs(bpy.types.Operator):
 
 
 # a reload SD gen path operator
-class SD_OT_reload_sd_img_path(bpy.types.Operator):
+class SD_OT_reloadSdImgPath(bpy.types.Operator):
     bl_idname = "sd_texture_proj.reload_sd_img_path"
     bl_label = "Reload SD image path"
     bl_description = "Reload the Sable Diffusion image Path into the Stable_diffusion_gen node group"
@@ -451,5 +468,28 @@ class SD_OT_reload_sd_img_path(bpy.types.Operator):
         gen_node_group = context.scene[gen_node_group_prop_name]
 
         sd_texture_functions.get_node('Stable_diffusion_gen', gen_node_group).image.filepath = new_img_generated_path
+
+        return {'FINISHED'}
+
+# operator to enter painting mode and paint the custom mask as single image and this the first uv layer
+class SD_OT_paintCustomMask(bpy.types.Operator):
+    bl_idname = "sd_texture_proj.paint_custom_mask"
+    bl_label = "Paint custom mask"
+    bl_description = "Enter painting mode and paint the custom mask of the selected object"
+
+    @classmethod
+    def poll(cls, context):
+        custom_mask_image_exists = custom_mask_prop_name in context.active_object
+        return custom_mask_image_exists
+
+    def execute(self, context):
+        custom_mask_image = context.active_object[custom_mask_prop_name]
+        bpy.ops.view3d.view_selected(use_all_regions=False)
+
+        bpy.ops.paint.texture_paint_toggle()
+        bpy.context.scene.tool_settings.image_paint.mode = 'IMAGE'
+        bpy.context.scene.tool_settings.image_paint.canvas = custom_mask_image
+        # set uv_layer 0 active
+        context.active_object.data.uv_layers.active_index = 0
 
         return {'FINISHED'}

@@ -8,6 +8,7 @@ class sd_texture_prop_group(bpy.types.PropertyGroup):
         default="//",
         subtype="FILE_PATH",
     )
+
     masks_resolution: bpy.props.IntProperty(
         name="Masks Resolution",
         description="Resolution of the projection masks",
@@ -15,6 +16,7 @@ class sd_texture_prop_group(bpy.types.PropertyGroup):
         min=1,
         max=4096,
     )
+
     masks_samples: bpy.props.IntProperty(
         name="Masks Sampling",
         description="Sampling of the projection masks",
@@ -26,6 +28,3 @@ class sd_texture_prop_group(bpy.types.PropertyGroup):
         description="Use symmetry on the X axis",
         default=False,
     )
-
-
-

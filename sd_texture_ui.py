@@ -25,14 +25,18 @@ class SDTextureProj_PT_Panel(bpy.types.Panel):
             box.use_property_split = True
             box.use_property_decorate = False
 
-            column4 = box.column(align=True)
-            column4.label(text="Projection settings :")
-            column4.prop(context.scene.sd_texture_props, "use_mirror_X", text="Symmetry X")
+            column6 = box.column(align=True)
+            column6.label(text="Scene format :")
+            column6.prop(context.scene.render, "resolution_x")
+            column6.prop(context.scene.render, "resolution_y", text="Y")
 
             column5 = box.column(align=True)
             column5.label(text="Masks settings :")
             column5.prop(context.scene.sd_texture_props, "masks_resolution", text="Resolution")
             column5.prop(context.scene.sd_texture_props, "masks_samples", text="Samples")
+            column5.prop(context.scene.sd_texture_props, "use_mirror_X", text="Symmetry X")
+
+
 
         if "Proj collection" in context.scene or "Projection scene" in context.scene:
             column2 = layout.column(align=True)
@@ -44,6 +48,10 @@ class SDTextureProj_PT_Panel(bpy.types.Panel):
         column3.operator("sd_texture_proj.transfer_tweaked_uvs")
         column3.operator("sd_texture_proj.reload_sd_img_path")
 
-
+        if "Custom mask" in context.active_object:
+            column4 = layout.column(align=True)
+            column4.label(text="Custom mask :")
+            column4.operator("sd_texture_proj.paint_custom_mask")
+            column4.operator("image.save_all_modified", text="Save all images", icon='FILE_TICK')
 
 # todo another panel for the settings

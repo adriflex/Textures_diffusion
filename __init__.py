@@ -30,8 +30,9 @@ register_classes = [
     sd_texture_operators.SDTextureProj_OT_BakeProjMasks,
     sd_texture_operators.SDTextureProj_OT_CreateProjUVs,
     sd_texture_operators.SDTextureProj_OT_CreateNewShadingScene,
-    sd_texture_operators.SD_OT_transfer_tweaked_uvs,
-    sd_texture_operators.SD_OT_reload_sd_img_path,
+    sd_texture_operators.SD_OT_transferTweakedUvs,
+    sd_texture_operators.SD_OT_reloadSdImgPath,
+    sd_texture_operators.SD_OT_paintCustomMask,
     properties.sd_texture_prop_group,
     sd_texture_ui.SDTextureProj_PT_Panel,
 ]
