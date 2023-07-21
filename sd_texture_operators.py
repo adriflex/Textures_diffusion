@@ -1,7 +1,6 @@
 from math import radians
 
 import bpy
-# from . import materials_baking
 from . import sd_texture_functions
 
 subject_prop_name = "Subject mesh"
@@ -21,9 +20,6 @@ final_mesh_collection_prop_name = "Final mesh collection"
 tweaking_collection_prop_name = "Tweaking collection"
 
 
-# sd_gen_img_path_prop_name = "Stable diffusion image generated path"
-
-
 class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
     bl_idname = "sd_texture_proj.create_new_proj_scene"
     bl_label = "Create new projection scene"
@@ -39,6 +35,8 @@ class SDTextureProj_OT_CreateNewProjScene(bpy.types.Operator):
         active_obj = context.active_object
 
         sd_proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD projection scene")
+        sd_proj_scene.render.resolution_x = 910
+        sd_proj_scene.render.resolution_y = 512
 
         mesh_collection = bpy.data.collections.new(name=f"{active_obj.name} projection meshes")
         sd_proj_scene.collection.children.link(mesh_collection)
@@ -123,9 +121,6 @@ class SDTextureProj_OT_BakeProjMasks(bpy.types.Operator):
     bl_label = "Bake projection masks"
     bl_description = "Bake camera occlusion and facing masks"
 
-    # todo > parameter mirror : bool and axis : "X", "Y", "Z"
-    # todo > size for the maps
-
     # poll function
     @classmethod
     def poll(cls, context):
@@ -147,35 +142,43 @@ class SDTextureProj_OT_BakeProjMasks(bpy.types.Operator):
 
         bpy.context.window.cursor_set("WAIT")
 
+        masks_resolution = proj_scene.sd_texture_props.masks_resolution
+        mask_samples = proj_scene.sd_texture_props.masks_samples
+
         for obj in collection.objects:
             assert obj.type == "MESH", f"Object {obj.name} is not a mesh"
 
-            facing_path = f"{image_directory}/{obj.name}_facing_mask.exr"
-            facing_mirrored_path = f"{image_directory}/{obj.name}_facing_mask_mirrored.exr"
-            camera_occlusion_path = f"{image_directory}/{obj.name}_camera_occlusion_mask.exr"
-            camera_occlusion_mirrored_path = f"{image_directory}/{obj.name}_camera_occlusion_mask_mirrored.exr"
+            facing_path = f"{image_directory}/Masks/{obj.name}_facing_mask.exr"
+            facing_mirrored_path = f"{image_directory}/Masks/{obj.name}_facing_mask_mirrored.exr"
+            camera_occlusion_path = f"{image_directory}/Masks/{obj.name}_camera_occlusion_mask.exr"
+            camera_occlusion_mirrored_path = f"{image_directory}/Masks/{obj.name}_camera_occlusion_mask_mirrored.exr"
 
             # bake masks
-            sd_texture_functions.render_facing(obj, facing_path)
-
-            sd_texture_functions.render_camera_occlusion(obj, camera_occlusion_path)
-
-            # mirror
-            sd_texture_functions.mirror_obj(obj, "X")
-
-            sd_texture_functions.render_facing(obj, facing_mirrored_path)
-            sd_texture_functions.render_camera_occlusion(obj, camera_occlusion_mirrored_path)
-
-            sd_texture_functions.mirror_obj(obj, "X")
+            sd_texture_functions.render_facing(obj, facing_path, masks_resolution, mask_samples)
+            sd_texture_functions.render_camera_occlusion(obj, camera_occlusion_path, masks_resolution, mask_samples)
 
             # add file output to the object custom properties
             obj[facing_path_prop_name] = facing_path
-            obj[facing_path_mirrored_prop_name] = facing_mirrored_path
             obj[camera_occlusion_prop_name] = camera_occlusion_path
-            obj[camera_occlusion_mirrored_prop_name] = camera_occlusion_mirrored_path
+
+            # mirror
+            if proj_scene.sd_texture_props.use_mirror_X:
+                sd_texture_functions.mirror_obj(obj, "X")
+
+                sd_texture_functions.render_facing(obj, facing_mirrored_path, masks_resolution, mask_samples)
+                sd_texture_functions.render_camera_occlusion(obj, camera_occlusion_mirrored_path, masks_resolution, mask_samples)
+
+                sd_texture_functions.mirror_obj(obj, "X")
+
+                # add file output to the object custom properties
+                obj[facing_path_mirrored_prop_name] = facing_mirrored_path
+                obj[camera_occlusion_mirrored_prop_name] = camera_occlusion_mirrored_path
 
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
+
+        for image in bpy.data.images:
+            image.reload()
 
         # tell the user the maps have been baked
         self.report({'INFO'}, "Baking done !")
@@ -204,21 +207,23 @@ class SDTextureProj_OT_CreateProjUVs(bpy.types.Operator):
         for obj in collection.objects:
             assert obj.type == "MESH", f"Object {obj.name} is not a mesh"
 
-            # project the UVs
             uv_layer_name = f"{obj.name}_cam_proj"
-            sd_texture_functions.project_uvs_from_camera(obj, camera, uv_layer_name)
-
-            # mirror
-            sd_texture_functions.mirror_obj(obj, "X")
-
             uv_layer_mirrored_name = f"{obj.name}_cam_proj_mirrored"
-            sd_texture_functions.project_uvs_from_camera(obj, camera, uv_layer_mirrored_name)
 
-            sd_texture_functions.mirror_obj(obj, "X")
+            # project the UVs
+            sd_texture_functions.project_uvs_from_camera(obj, camera, uv_layer_name)
 
             # add file output to the object custom properties
             obj[uv_layer_proj_prop_name] = uv_layer_name
-            obj[uv_layer_proj_mirrored_prop_name] = uv_layer_mirrored_name
+
+            # mirror
+            if proj_scene.sd_texture_props.use_mirror_X:
+                sd_texture_functions.mirror_obj(obj, "X")
+                sd_texture_functions.project_uvs_from_camera(obj, camera, uv_layer_mirrored_name)
+                sd_texture_functions.mirror_obj(obj, "X")
+
+                # add file output to the object custom properties
+                obj[uv_layer_proj_mirrored_prop_name] = uv_layer_mirrored_name
 
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
@@ -238,7 +243,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
     def poll(cls, context):
         return proj_collection_prop_name in context.scene \
             and img_dir_prop_name in context.scene \
-            and context.scene.img_generated_path != "//"
+            and context.scene.sd_texture_props.img_generated_path != "//"
 
     def execute(self, context):
 
@@ -246,7 +251,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         subject_mesh = proj_scene[subject_prop_name]
         subject_name = subject_mesh.name
         proj_mesh_collection = proj_scene[proj_collection_prop_name]
-        img_gen_path = context.scene.img_generated_path
+        img_gen_path = context.scene.sd_texture_props.img_generated_path
 
         shading_scene_name = f"{subject_name} SD shading"
 
@@ -259,8 +264,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             if obj[uv_layer_proj_prop_name] not in obj.data.uv_layers.keys():
                 self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
 
-            if obj[uv_layer_proj_mirrored_prop_name] not in obj.data.uv_layers.keys():
-                self.report({'ERROR'}, f"Projection uvs not found in object {obj.name}")
 
         # create a new scene for the shading
         shading_scene = bpy.data.scenes.new(name=shading_scene_name)
@@ -285,7 +288,8 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene[shading_mesh_prop_name] = shading_mesh
         shading_scene[projection_scene_prop_name] = proj_scene
         shading_scene[final_mesh_collection_prop_name] = final_shading_mesh_collection
-        shading_scene.img_generated_path = img_gen_path
+        shading_scene.sd_texture_props.img_generated_path = img_gen_path
+        shading_scene.sd_texture_props.use_mirror_X = proj_scene.sd_texture_props.use_mirror_X
 
         # create collection for tweaking
 
@@ -330,7 +334,6 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
 
         offset = 0
         proj_node_groups = []
-        # proj_materials = []
         for obj in proj_mesh_collection.objects:
             # duplicate the shading_mesh and move it sideways
             new_shading_mesh = shading_mesh.copy()
@@ -347,6 +350,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             # create Subject proj material
             proj_data = {
                 "proj_mesh_name": obj.name,
+                "use_mirror_X": proj_scene.sd_texture_props.use_mirror_X,
                 "proj_uv_layer": obj[uv_layer_proj_prop_name],
                 "proj_uv_layer_mirrored": obj[uv_layer_proj_mirrored_prop_name],
                 "sd_gen_node_group": sd_gen_node_group,
@@ -399,26 +403,33 @@ class SD_OT_transfer_tweaked_uvs(bpy.types.Operator):
         active_scene = context.scene
 
         tweaking_collection = active_scene[tweaking_collection_prop_name]
+        final_mesh_collection = active_scene[final_mesh_collection_prop_name]
         shading_mesh = active_scene[shading_mesh_prop_name]
 
         proj_scene_camera = active_scene[projection_scene_prop_name].camera
         active_scene.collection.objects.link(proj_scene_camera)
 
         for obj in tweaking_collection.objects:
+            active_scene.view_layers[0].layer_collection.children[final_mesh_collection.name].hide_viewport = False
+
+
             uv_layer = obj[uv_layer_proj_prop_name]
-            uv_layer_mirrored = obj[uv_layer_proj_mirrored_prop_name]
 
             sd_texture_functions.project_uvs_from_camera(obj, proj_scene_camera, uv_layer)
-            sd_texture_functions.mirror_obj(obj, "X")
-
-            sd_texture_functions.project_uvs_from_camera(obj, proj_scene_camera, uv_layer_mirrored)
-            sd_texture_functions.mirror_obj(obj, "X")
-
             sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer)
-            sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer_mirrored)
+
+            if active_scene.sd_texture_props.use_mirror_X:
+                uv_layer_mirrored = obj[uv_layer_proj_mirrored_prop_name]
+
+                sd_texture_functions.mirror_obj(obj, "X")
+                sd_texture_functions.project_uvs_from_camera(obj, proj_scene_camera, uv_layer_mirrored)
+                sd_texture_functions.mirror_obj(obj, "X")
+
+                sd_texture_functions.transfer_uvs(obj, shading_mesh, uv_layer_mirrored)
 
         # unlink the camera
         active_scene.collection.objects.unlink(proj_scene_camera)
+        active_scene.view_layers[0].layer_collection.children[tweaking_collection.name].hide_viewport = True
 
         return {'FINISHED'}
 
@@ -432,11 +443,11 @@ class SD_OT_reload_sd_img_path(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         gen_node_group_exist = gen_node_group_prop_name in context.scene
-        img_generated_path_exist = "img_generated_path" in context.scene
+        img_generated_path_exist = "img_generated_path" in context.scene.sd_texture_props
         return gen_node_group_exist and img_generated_path_exist
 
     def execute(self, context):
-        new_img_generated_path = context.scene.img_generated_path
+        new_img_generated_path = context.scene.sd_texture_props.img_generated_path
         gen_node_group = context.scene[gen_node_group_prop_name]
 
         sd_texture_functions.get_node('Stable_diffusion_gen', gen_node_group).image.filepath = new_img_generated_path

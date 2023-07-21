@@ -154,13 +154,14 @@ def render_depth(render_path: str, mesh_collection: LayerCollection):
     bpy.data.scenes.remove(depth_scene)
 
 
-def render_facing(obj: Mesh, render_path: str):
+def render_facing(obj: Mesh, render_path: str, resolution, samples):
     print(f"Baking {obj} facing mask at : {render_path}")
 
     backup_scene = bpy.context.scene
 
     facing_scene = bpy.data.scenes.new(name=f"{obj.name} bake facing")
     facing_scene.render.engine = 'CYCLES'
+    facing_scene.cycles.samples = samples
 
     bpy.context.window.scene = facing_scene
 
@@ -177,7 +178,7 @@ def render_facing(obj: Mesh, render_path: str):
 
     # image to bake into
     image_name = f"{obj.name}_facing"
-    bake_image = bpy.data.images.new(image_name, width=1024, height=1024)
+    bake_image = bpy.data.images.new(image_name, width=resolution, height=resolution)
 
     nodes = facing_material.node_tree.nodes
 
@@ -208,7 +209,7 @@ def render_facing(obj: Mesh, render_path: str):
     del facing_scene
 
 
-def render_camera_occlusion(obj: Mesh, render_path: str):
+def render_camera_occlusion(obj: Mesh, render_path: str, resolution, samples):
     print(f"Baking {obj} shadowing mask at : {render_path}")
 
     backup_scene = bpy.context.scene
@@ -217,6 +218,7 @@ def render_camera_occlusion(obj: Mesh, render_path: str):
     cam_occlusion_scene.name = "SD_texture_bake_shadowing"
     cam_occlusion_scene.render.engine = 'CYCLES'
     cam_occlusion_scene.cycles.max_bounces = 0
+    cam_occlusion_scene.cycles.samples = samples
 
     bpy.context.window.scene = cam_occlusion_scene
 
@@ -248,7 +250,7 @@ def render_camera_occlusion(obj: Mesh, render_path: str):
     obj.active_material = diffuse_material
 
     image_name = f"{obj.name}_camera_occlusion"
-    bake_image = bpy.data.images.new(image_name, width=1024, height=1024)
+    bake_image = bpy.data.images.new(image_name, width=resolution, height=resolution)
 
     nodes = diffuse_material.node_tree.nodes
 
@@ -417,27 +419,36 @@ def create_proj_node_group(proj_data: dict) -> NodeGroup:
     get_node('UV Proj', node_tree)
 
     get_node('UV Proj base', node_tree).uv_map = proj_data['proj_uv_layer']
-    get_node('UV Proj mirrored', node_tree).uv_map = proj_data['proj_uv_layer_mirrored']
     get_node('Stable_diffusion_gen base', node_tree).node_tree = proj_data['sd_gen_node_group']
-    get_node('Stable_diffusion_gen mirrored', node_tree).node_tree = proj_data['sd_gen_node_group']
 
-    # todo idea : system L and R instead of mirrored
+    if proj_data['use_mirror_X']:
+        get_node('Mirror on/off', node_tree).outputs[0].default_value = 1
+
+        get_node('UV Proj mirrored', node_tree).mute = False
+        get_node('UV Proj mirrored', node_tree).uv_map = proj_data['proj_uv_layer_mirrored']
+
+        get_node('Stable_diffusion_gen mirrored', node_tree).mute = False
+        get_node('Stable_diffusion_gen mirrored', node_tree).node_tree = proj_data['sd_gen_node_group']
 
     settings_masks_node_tree = get_node('Settings masks proj', node_tree).node_tree
 
     # create new images
     cam_occlusion_image = bpy.data.images.load(proj_data['cam_occlusion'])
-    cam_occlusion_mirrored_image = bpy.data.images.load(proj_data['cam_occlusion_mirrored'])
     facing_mask_image = bpy.data.images.load(proj_data['facing_mask'])
-    facing_mask_mirrored_image = bpy.data.images.load(proj_data['facing_mask_mirrored'])
 
     # set images
     get_node('Custom mask', settings_masks_node_tree).image = proj_data['custom_mask_image']
     get_node('Mask cam occlu base', settings_masks_node_tree).image = cam_occlusion_image
-    get_node('Mask cam occlu mirrored', settings_masks_node_tree).image = cam_occlusion_mirrored_image
-
     get_node('Facing mask base', settings_masks_node_tree).image = facing_mask_image
-    get_node('Facing mask mirrored', settings_masks_node_tree).image = facing_mask_mirrored_image
+
+    if proj_data['use_mirror_X']:
+        cam_occlusion_mirrored_image = bpy.data.images.load(proj_data['cam_occlusion_mirrored'])
+        facing_mask_mirrored_image = bpy.data.images.load(proj_data['facing_mask_mirrored'])
+
+        get_node('Mask cam occlu mirrored', settings_masks_node_tree).mute = False
+        get_node('Mask cam occlu mirrored', settings_masks_node_tree).image = cam_occlusion_mirrored_image
+        get_node('Facing mask mirrored', settings_masks_node_tree).mute = False
+        get_node('Facing mask mirrored', settings_masks_node_tree).image = facing_mask_mirrored_image
 
     print("Created projection node group: ", node_tree.name)
 
