@@ -329,6 +329,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
 
         offset = 0
         proj_node_groups = []
+        # proj_materials = []
         for obj in proj_mesh_collection.objects:
             # duplicate the shading_mesh and move it sideways
             new_shading_mesh = shading_mesh.copy()
@@ -360,6 +361,7 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             proj_node_groups.append(proj_node_group)
 
             proj_material = sd_texture_functions.create_proj_material(obj.name, proj_node_group, custom_mask_image)
+            # proj_materials.append(proj_material)
 
             # append material at object level
             shading_mesh.data.materials.clear()
@@ -367,11 +369,15 @@ class SDTextureProj_OT_CreateNewShadingScene(bpy.types.Operator):
             new_shading_mesh.material_slots[0].link = "OBJECT"
             new_shading_mesh.material_slots[0].material = proj_material
 
+
         # create Subject final material
         final_assembly_material = sd_texture_functions.create_final_assembly_material(proj_node_groups,
                                                                                       sd_gen_node_group)
         shading_mesh.data.materials.clear()
         shading_mesh.data.materials.append(final_assembly_material)
+
+        for obj in breakdown_collection.objects:
+            obj.data = shading_mesh.data
 
         return {'FINISHED'}
 
