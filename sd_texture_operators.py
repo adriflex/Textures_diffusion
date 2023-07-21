@@ -78,21 +78,20 @@ class SDTextureProj_OT_RenderRefImg(bpy.types.Operator):
     bl_label = "Render ref images"
     bl_description = "Render image to use in Stable Diffusion"
 
+    # poll function
+    @classmethod
+    def poll(cls, context):
+        camera_in_scene = context.scene.camera is not None
+        proj_collection_in_scene = proj_collection_prop_name in context.scene.keys()
+        subject_prop_in_scene = subject_prop_name in context.scene.keys()
+        return camera_in_scene and proj_collection_in_scene and subject_prop_in_scene
+
     def execute(self, context):
         if not bpy.data.is_saved:
             self.report({'ERROR'}, "Please save the .blend file before baking")
             return {'CANCELLED'}
 
         proj_scene = context.scene
-
-        if proj_collection_prop_name not in proj_scene.keys():
-            self.report({'ERROR'}, "No projection collection found. Please create projection scene")
-            return {'CANCELLED'}
-
-        if subject_prop_name not in proj_scene.keys():
-            self.report({'ERROR'}, "No subject mesh found. Please create projection scene")
-            return {'CANCELLED'}
-
         sd_texture_functions.create_img_dir(proj_scene)
 
         subject_name = proj_scene[subject_prop_name].name
@@ -124,8 +123,15 @@ class SDTextureProj_OT_BakeProjMasks(bpy.types.Operator):
     bl_label = "Bake projection masks"
     bl_description = "Bake camera occlusion and facing masks"
 
-    # todo > undo render params
     # todo > parameter mirror : bool and axis : "X", "Y", "Z"
+    # todo > size for the maps
+
+    # poll function
+    @classmethod
+    def poll(cls, context):
+        camera_in_scene = context.scene.camera is not None
+        proj_collection_in_scene = proj_collection_prop_name in context.scene.keys()
+        return camera_in_scene and proj_collection_in_scene
 
     def execute(self, context):
         if not bpy.data.is_saved:
@@ -133,10 +139,6 @@ class SDTextureProj_OT_BakeProjMasks(bpy.types.Operator):
             return {'CANCELLED'}
 
         proj_scene = context.scene
-
-        if proj_collection_prop_name not in proj_scene.keys():
-            self.report({'ERROR'}, "No projection collection found. Please create projection scene")
-            return {'CANCELLED'}
 
         sd_texture_functions.create_img_dir(proj_scene)
 
@@ -187,18 +189,14 @@ class SDTextureProj_OT_CreateProjUVs(bpy.types.Operator):
     bl_description = "Project the UVs of the collection from the camera"
 
     # poll function
+    @classmethod
+    def poll(cls, context):
+        camera_in_scene = context.scene.camera is not None
+        proj_collection_in_scene = proj_collection_prop_name in context.scene.keys()
+        return camera_in_scene and proj_collection_in_scene
 
     def execute(self, context):
-
         proj_scene = context.scene
-
-        if proj_collection_prop_name not in proj_scene.keys():
-            self.report({'ERROR'}, "No projection collection found. Please create projection scene")
-            return {'CANCELLED'}
-
-        if proj_scene.camera is None:
-            self.report({'ERROR'}, "No camera found. Please create projection scene")
-            return {'CANCELLED'}
 
         collection = proj_scene[proj_collection_prop_name]
         camera = proj_scene.camera
@@ -423,6 +421,7 @@ class SD_OT_transfer_tweaked_uvs(bpy.types.Operator):
         active_scene.collection.objects.unlink(proj_scene_camera)
 
         return {'FINISHED'}
+
 
 # a reload SD gen path operator
 class SD_OT_reload_sd_img_path(bpy.types.Operator):
