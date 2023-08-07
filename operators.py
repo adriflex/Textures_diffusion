@@ -276,6 +276,9 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene.render.resolution_x = proj_scene.render.resolution_x
         shading_scene.render.resolution_y = proj_scene.render.resolution_y
 
+        # set the color management to standard
+        shading_scene.view_settings.view_transform = "Standard"
+
         # create Stable Diffusion gen group node
         sd_gen_node_group = functions.create_sd_gen_node_group(img_gen_path)
         shading_scene[gen_node_group_prop_name] = sd_gen_node_group
@@ -295,13 +298,15 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene[shading_mesh_prop_name] = shading_mesh
         shading_scene[projection_scene_prop_name] = proj_scene
         shading_scene[final_mesh_collection_prop_name] = final_shading_mesh_collection
+        shading_scene[img_dir_prop_name] = proj_scene[img_dir_prop_name]
         shading_scene.textures_diffusion_props.img_generated_path = img_gen_path
         shading_scene.textures_diffusion_props.use_mirror_X = proj_scene.textures_diffusion_props.use_mirror_X
 
         # create collection for tweaking
 
         tweak_mesh_collection = functions.clone_collection(context, proj_mesh_collection,
-                                                           f"{shading_scene_name} projection tweaks")
+                                                           name=f"{shading_scene_name} projection tweaks",
+                                                           suffix="_tweaks")
         shading_scene.view_layers[0].layer_collection.children[tweak_mesh_collection.name].hide_viewport = True
         shading_scene[tweaking_collection_prop_name] = tweak_mesh_collection
 
@@ -403,7 +408,7 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class TexDiff_OT_reloadSdImgPath(bpy.types.Operator):
+class TexDiff_OT_ReloadSdImgPath(bpy.types.Operator):
     bl_idname = "textures_diffusion.reload_sd_img_path"
     bl_label = "Reload SD image path"
     bl_description = "Reload the Sable Diffusion image Path into the Stable_diffusion_gen node group"
@@ -423,7 +428,7 @@ class TexDiff_OT_reloadSdImgPath(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class TexDiff_OT_transferTweakedUvs(bpy.types.Operator):
+class TexDiff_OT_TransferTweakedUvs(bpy.types.Operator):
     bl_idname = "textures_diffusion.transfer_tweaked_uvs"
     bl_label = "Transfer projection tweaks"
     bl_description = "Transfer projection tweaks to the shading mesh and the breakdown collection meshes"
@@ -474,7 +479,7 @@ class TexDiff_OT_transferTweakedUvs(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class TexDiff_OT_paintCustomMask(bpy.types.Operator):
+class TexDiff_OT_PaintCustomMask(bpy.types.Operator):
     bl_idname = "textures_diffusion.paint_custom_mask"
     bl_label = "Paint custom mask"
     bl_description = "Enter painting mode and paint the custom mask of the selected object"
@@ -499,7 +504,7 @@ class TexDiff_OT_paintCustomMask(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class TexDiff_OT_tweakProjection(bpy.types.Operator):
+class TexDiff_OT_TweakProjection(bpy.types.Operator):
     bl_idname = "textures_diffusion.tweak_projection"
     bl_label = "Tweak projection"
     bl_description = "Enter edit mode and tweak the projection of the selected object"
@@ -518,4 +523,54 @@ class TexDiff_OT_tweakProjection(bpy.types.Operator):
 
         return {'FINISHED'}
 
-# todo : bake projected textures
+
+class TexDiff_OT_BakeProjection(bpy.types.Operator):
+    bl_idname = "textures_diffusion.bake_projection"
+    bl_label = "Bake final texture"
+    bl_description = "Bake the projected texture of the final mesh"
+
+    @classmethod
+    def poll(cls, context):
+        shading_mesh_exists = shading_mesh_prop_name in context.scene
+        img_dir_prop_name_exists = img_dir_prop_name in context.scene
+        if shading_mesh_exists:
+            shading_mesh_active = context.scene[shading_mesh_prop_name] == context.active_object
+        return shading_mesh_exists and img_dir_prop_name_exists and shading_mesh_active
+
+    def execute(self, context):
+        # create a new collection
+        new_name = context.scene[shading_mesh_prop_name].name + "_bake"
+        bake_collection = bpy.data.collections.new(new_name)
+        context.scene.collection.children.link(bake_collection)
+
+        # copy the shading mesh into the new collection
+        shading_mesh_copy = context.scene[shading_mesh_prop_name].copy()
+        shading_mesh_copy.name = new_name
+        shading_mesh_copy.data = context.scene[shading_mesh_prop_name].data.copy()
+        shading_mesh_copy.data.name = new_name
+        bake_collection.objects.link(shading_mesh_copy)
+
+        # set the first uv_layer as active
+        shading_mesh_copy.data.uv_layers.active_index = 0
+
+        # Bake the emission
+        bake_render_path = f"{context.scene[img_dir_prop_name]}/{new_name}.exr"
+        bake_resolution = context.scene.textures_diffusion_props.bake_resolution
+        functions.bake_emission(context,shading_mesh_copy, bake_render_path, bake_resolution)
+
+        # create a new material and assign to shading_mesh_copy
+        baked_image_material = functions.create_baked_image_material(new_name, bake_render_path)
+
+        # clean the projection uvs
+        functions.clean_cam_proj_uvs(shading_mesh_copy)
+
+        # clear material and assign the new one
+        shading_mesh_copy.data.materials.clear()
+        shading_mesh_copy.data.materials.append(baked_image_material)
+
+        # hide the final assembly collection and make the baked mesh active
+        layer_collection = context.scene.view_layers[0].layer_collection
+        layer_collection.children[context.scene[final_mesh_collection_prop_name].name].hide_viewport = True
+        context.view_layer.objects.active = shading_mesh_copy
+
+        return {'FINISHED'}

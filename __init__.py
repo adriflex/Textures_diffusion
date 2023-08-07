@@ -14,7 +14,7 @@ import bpy
 if "bpy" in locals():
     import importlib
 
-    if "sd_texture_operators" in locals():
+    if "operators" in locals():
         importlib.reload(operators)
         importlib.reload(functions)
         importlib.reload(properties)
@@ -30,10 +30,11 @@ register_classes = [
     operators.TexDiff_OT_BakeProjMasks,
     operators.TexDiff_OT_CreateProjUVs,
     operators.TexDiff_OT_CreateNewShadingScene,
-    operators.TexDiff_OT_transferTweakedUvs,
-    operators.TexDiff_OT_reloadSdImgPath,
-    operators.TexDiff_OT_paintCustomMask,
-    operators.TexDiff_OT_tweakProjection,
+    operators.TexDiff_OT_TransferTweakedUvs,
+    operators.TexDiff_OT_ReloadSdImgPath,
+    operators.TexDiff_OT_PaintCustomMask,
+    operators.TexDiff_OT_TweakProjection,
+    operators.TexDiff_OT_BakeProjection,
     properties.TexDiff_prop_group,
     ui.TexDiff_PT_Panel,
 ]

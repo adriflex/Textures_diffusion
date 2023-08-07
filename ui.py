@@ -1,5 +1,6 @@
 import bpy
 
+shading_mesh_prop_name = "Shading mesh"
 
 class TexDiff_PT_Panel(bpy.types.Panel):
     bl_label = "SD Texture Projector"
@@ -25,10 +26,10 @@ class TexDiff_PT_Panel(bpy.types.Panel):
             box.use_property_split = True
             box.use_property_decorate = False
 
-            column6 = box.column(align=True)
-            column6.label(text="Scene format :")
-            column6.prop(context.scene.render, "resolution_x")
-            column6.prop(context.scene.render, "resolution_y", text="Y")
+            column8 = box.column(align=True)
+            column8.label(text="Scene format :")
+            column8.prop(context.scene.render, "resolution_x")
+            column8.prop(context.scene.render, "resolution_y", text="Y")
 
             column5 = box.column(align=True)
             column5.label(text="Masks settings :")
@@ -44,6 +45,7 @@ class TexDiff_PT_Panel(bpy.types.Panel):
         column3 = layout.column(align=True)
         column3.operator("textures_diffusion.create_new_shading_scene", icon="MATSHADERBALL")
         column3.operator("textures_diffusion.reload_sd_img_path")
+        column3.operator("textures_diffusion.bake_projection", icon="RENDER_STILL")
 
         if context.active_object:
             if "Custom mask" in context.active_object:
@@ -58,4 +60,14 @@ class TexDiff_PT_Panel(bpy.types.Panel):
                 column7.operator("textures_diffusion.tweak_projection", text="Edit tweaks")
                 column7.operator("textures_diffusion.transfer_tweaked_uvs", text="Transfer tweaks")
 
-# todo another panel for the settings
+            if shading_mesh_prop_name in context.scene.keys():
+                if context.scene[shading_mesh_prop_name] == context.active_object:
+                    box2 = column3.box()
+                    box2.use_property_split = True
+                    box2.use_property_decorate = False
+
+                    column8 = box2.column(align=True)
+                    column8.prop(context.scene.textures_diffusion_props, "bake_resolution")
+
+
+# todo another panel for the ref image settings

@@ -20,7 +20,7 @@ class TexDiff_prop_group(bpy.types.PropertyGroup):
     masks_samples: bpy.props.IntProperty(
         name="Masks Sampling",
         description="Sampling of the projection masks",
-        default=8,
+        default=512,
     )
 
     use_mirror_X: bpy.props.BoolProperty(
@@ -28,3 +28,12 @@ class TexDiff_prop_group(bpy.types.PropertyGroup):
         description="Use symmetry on the X axis",
         default=False,
     )
+
+    bake_resolution: bpy.props.IntProperty(
+        name="Bake Resolution",
+        description="Resolution of the baked projection",
+        default=1024,
+        min=1,
+        soft_max=4096,
+    )
+

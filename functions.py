@@ -337,16 +337,15 @@ def transfer_uvs(obj_from, obj_to, uv_layer_name):
     bpy.ops.object.join_uvs()
 
 
-def clone_collection(context, collection: LayerCollection, name: str):
+def clone_collection(context, collection: LayerCollection, name: str, suffix: str) -> LayerCollection:
     new_collection = bpy.data.collections.new(name)
     context.scene.collection.children.link(new_collection)
 
     for obj in collection.objects:
-        # new name should be the same as the old one + "projection_tweaks"
         new_obj = obj.copy()
         new_obj.data = obj.data.copy()
-        new_obj.name = obj.name + "_projection_tweaks"
-        new_obj.data.name = obj.data.name + "_copy"
+        new_obj.name = obj.name + suffix
+        new_obj.data.name = obj.data.name + suffix
         new_collection.objects.link(new_obj)
 
     return new_collection
@@ -505,3 +504,73 @@ def create_final_assembly_material(proj_node_groups: list, sd_gen_node_group: No
     print("Created final assembly material: ", final_assembly_material.name)
 
     return final_assembly_material
+
+
+# function for final bake
+def bake_emission(context, obj: Mesh, render_path: str, resolution: int):
+    backup_scene = bpy.context.scene
+
+    # create new scene
+    scene = bpy.data.scenes.new("Bake")
+    scene.render.engine = 'CYCLES'
+    scene.cycles.samples = 1
+    bpy.context.window.scene = scene
+
+    # link obj to new scene
+    scene.collection.objects.link(obj)
+
+    # set object as active
+    context.view_layer.objects.active = obj
+
+    # add un node texture image dans le node tree du material
+    image_name = obj.name
+    bake_image = bpy.data.images.new(image_name, width=resolution, height=resolution, alpha=True)
+    # todo : setting image size
+
+    material = obj.active_material
+    node_tree = material.node_tree
+    image_texture_node = node_tree.nodes.new('ShaderNodeTexImage')
+    image_texture_node.image = bake_image
+
+    node_tree.nodes.active = image_texture_node
+
+    # bake the emission
+    bpy.ops.object.bake(type='EMIT')
+
+    # save the baked image
+    bake_image.filepath_raw = render_path
+    bake_image.file_format = 'OPEN_EXR'
+    bake_image.save()
+
+    print(f"Baked emission for {obj.name} in {render_path}")
+
+    # delete the image texture node
+    node_tree.nodes.remove(image_texture_node)
+
+    # delete the scene
+    bpy.data.scenes.remove(scene)
+
+    # restore the scene
+    bpy.context.window.scene = backup_scene
+
+
+def create_baked_image_material(name, path):
+    material = import_shading_material("Projections_baked")
+    material.name = name
+    node_tree = material.node_tree
+    get_node('Baked image', node_tree).image = bpy.data.images.load(path)
+
+    print("Created baked image material: ", material.name)
+
+    return material
+
+
+def clean_cam_proj_uvs(obj):
+    # if obj uvs layer have _cam_proj in name, delete it
+    layer_to_remove = []
+    for uv_layer in list(obj.data.uv_layers):
+        if "_cam_proj" in uv_layer.name:
+            layer_to_remove.append(uv_layer.name)
+
+    for uv_layer in layer_to_remove:
+        obj.data.uv_layers.remove(obj.data.uv_layers[uv_layer])
