@@ -1,7 +1,7 @@
 import bpy
 
 
-class sd_texture_prop_group(bpy.types.PropertyGroup):
+class TexDiff_prop_group(bpy.types.PropertyGroup):
     img_generated_path: bpy.props.StringProperty(
         name="IMG Generated Path",
         description="Path to the Stable Diffusion image",

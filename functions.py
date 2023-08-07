@@ -303,7 +303,7 @@ def project_uvs_from_camera(obj, camera, uv_layer_name):
     print("Projecting mesh: ", obj.name)
 
     if uv_layer_name not in obj.data.uv_layers.keys():
-        raise ValueError(f"UV layer {uv_layer_name} does not exist on object {obj.name}")
+        obj.data.uv_layers.new(name=uv_layer_name)
     obj.data.uv_layers[uv_layer_name].active = True
 
     # select the camera
