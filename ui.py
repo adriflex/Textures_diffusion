@@ -1,6 +1,12 @@
+import os
+
 import bpy
 
 shading_mesh_prop_name = "Shading mesh"
+
+# Preview collections for icons
+preview_collections = {}
+
 
 class TexDiff_PT_Panel(bpy.types.Panel):
     bl_label = "SD Texture Projector"
@@ -11,6 +17,10 @@ class TexDiff_PT_Panel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+
+        # Icons
+        preview_coll = preview_collections["main"]
+        my_icon = preview_coll["my_icon"]
 
         column = layout.column(align=True)
         column.label(text="Projection scene :")
@@ -26,10 +36,10 @@ class TexDiff_PT_Panel(bpy.types.Panel):
             box.use_property_split = True
             box.use_property_decorate = False
 
-            column8 = box.column(align=True)
-            column8.label(text="Scene format :")
-            column8.prop(context.scene.render, "resolution_x")
-            column8.prop(context.scene.render, "resolution_y", text="Y")
+            column6 = box.column(align=True)
+            column6.label(text="Scene format :")
+            column6.prop(context.scene.render, "resolution_x")
+            column6.prop(context.scene.render, "resolution_y", text="Y")
 
             column5 = box.column(align=True)
             column5.label(text="Masks settings :")
@@ -43,7 +53,7 @@ class TexDiff_PT_Panel(bpy.types.Panel):
             column2.prop(context.scene.textures_diffusion_props, "img_generated_path", text="SD image path")
 
         column3 = layout.column(align=True)
-        column3.operator("textures_diffusion.create_new_shading_scene", icon="MATSHADERBALL")
+        column3.operator("textures_diffusion.create_new_shading_scene", icon_value=my_icon.icon_id)  # "MATSHADERBALL"
         column3.operator("textures_diffusion.reload_sd_img_path")
         column3.operator("textures_diffusion.bake_projection", icon="RENDER_STILL")
 
@@ -70,4 +80,22 @@ class TexDiff_PT_Panel(bpy.types.Panel):
                     column8.prop(context.scene.textures_diffusion_props, "bake_resolution")
 
 
-# todo another panel for the ref image settings
+# todo another panel for the settings
+
+def register():
+    preview_coll = bpy.utils.previews.new()
+
+    icons_dir = os.path.join(os.path.dirname(__file__), "tex_diff_icon.png")
+    preview_coll.load("my_icon", icons_dir, 'IMAGE')
+
+    preview_collections["main"] = preview_coll
+
+    bpy.utils.register_class(TexDiff_PT_Panel)
+
+
+def unregister():
+    for preview_coll in preview_collections.values():
+        bpy.utils.previews.remove(preview_coll)
+    preview_collections.clear()
+
+    bpy.utils.unregister_class(TexDiff_PT_Panel)

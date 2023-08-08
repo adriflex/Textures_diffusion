@@ -525,7 +525,6 @@ def bake_emission(context, obj: Mesh, render_path: str, resolution: int):
     # add un node texture image dans le node tree du material
     image_name = obj.name
     bake_image = bpy.data.images.new(image_name, width=resolution, height=resolution, alpha=True)
-    # todo : setting image size
 
     material = obj.active_material
     node_tree = material.node_tree

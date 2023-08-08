@@ -36,7 +36,6 @@ register_classes = [
     operators.TexDiff_OT_TweakProjection,
     operators.TexDiff_OT_BakeProjection,
     properties.TexDiff_prop_group,
-    ui.TexDiff_PT_Panel,
 ]
 
 
@@ -45,10 +44,13 @@ def register():
         bpy.utils.register_class(cls)
         print("Registered class: ", cls)
     bpy.types.Scene.textures_diffusion_props = bpy.props.PointerProperty(type=properties.TexDiff_prop_group)
-
+    print("Registered property: ", bpy.types.Scene.textures_diffusion_props)
+    ui.register()
 
 def unregister():
     for cls in register_classes:
         bpy.utils.unregister_class(cls)
         print("Unregistered class: ", cls)
     del bpy.types.Scene.textures_diffusion_props
+    print("Unregistered property: ", bpy.types.Scene.textures_diffusion_props)
+    ui.unregister()

@@ -531,6 +531,7 @@ class TexDiff_OT_BakeProjection(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        shading_mesh_active = False
         shading_mesh_exists = shading_mesh_prop_name in context.scene
         img_dir_prop_name_exists = img_dir_prop_name in context.scene
         if shading_mesh_exists:
