@@ -1,5 +1,4 @@
 import os
-
 import bpy
 
 shading_mesh_prop_name = "Shading mesh"
@@ -26,8 +25,6 @@ class TexDiff_PT_Panel(bpy.types.Panel):
         column.label(text="Projection scene :")
         column.operator("textures_diffusion.create_new_proj_scene", icon="SCENE_DATA")
         column.operator("textures_diffusion.render_ref_img")
-        # column.prop(context.scene, "masks_resolution", text="Masks resolution")
-        # column.prop(context.scene, "masks_sampling", text="Masks sampling")
         column.operator("textures_diffusion.bake_proj_masks")
         column.operator("textures_diffusion.create_proj_uvs")
 
