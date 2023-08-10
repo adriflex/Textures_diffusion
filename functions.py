@@ -4,6 +4,7 @@ from math import radians
 
 import bpy
 from bpy.types import Camera, LayerCollection, Mesh, Scene, Material, NodeGroup, Node, NodeTree, Image
+
 from . import materials_baking
 
 subject_prop_name = "Subject mesh"
@@ -383,7 +384,7 @@ def import_shading_node_group(node_group_name) -> NodeGroup:
 
 def get_node(base_name: str, node_tree: NodeTree) -> Node:
     for node in node_tree.nodes:
-        if node.name.startswith(base_name):
+        if base_name in node.name:
             return node
     raise ValueError("Node not found: ", base_name)
 
@@ -467,8 +468,9 @@ def create_final_assembly_material(proj_node_groups: list, sd_gen_node_group: No
     node_tree = final_assembly_material.node_tree
 
     last_mix_rgb = None
+    last_math = None
     for i, proj_node_group in enumerate(reversed(proj_node_groups)):
-
+        # assembly proj tree
         projection_node_group = node_tree.nodes.new('ShaderNodeGroup')
         projection_node_group.node_tree = proj_node_group
         projection_node_group.location = (-360, 400 - 200 * i)
@@ -490,8 +492,33 @@ def create_final_assembly_material(proj_node_groups: list, sd_gen_node_group: No
 
         node_tree.links.new(projection_node_group.outputs['Color'], mix_shader.inputs[2])
 
+        # assembly mask tree
+        mask_node_group = node_tree.nodes.new('ShaderNodeGroup')
+        mask_node_group.node_tree = proj_node_group
+        mask_node_group.location = (-360 + 1400, 400 - 200 * i)
+        projection_node_group.name = "Projection mask " + str(i)
+        projection_node_group.label = "Projection mask " + str(i)
+
+        math_node = node_tree.nodes.new('ShaderNodeMath')
+        math_node.operation = 'ADD'
+        math_node.use_clamp = True
+        math_node.inputs[0].default_value = 0.0
+        math_node.inputs[1].default_value = 0.0
+        math_node.location = (-160 + 1400, 400 - 200 * i)
+
+        # links
+        node_tree.links.new(mask_node_group.outputs['Mask'], math_node.inputs[1])
+
+        if last_math is not None:
+            node_tree.links.new(last_math.outputs['Value'], math_node.inputs[0])
+
+        last_math = math_node
+
     input_reroute = get_node('input_mix_projections_node_group', node_tree)
     node_tree.links.new(last_mix_rgb.outputs['Color'], input_reroute.inputs[0])
+
+    output_alpha = get_node('Material Output Alpha', node_tree)
+    node_tree.links.new(last_math.outputs['Value'], output_alpha.inputs[0])
 
     # setup SD gen
     sd_gen_node = get_node('Stable_diffusion_gen', node_tree)
