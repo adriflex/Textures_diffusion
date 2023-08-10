@@ -530,7 +530,7 @@ def create_final_assembly_material(proj_node_groups: list, sd_gen_node_group: No
 
 
 # function for final bake
-def bake_emission(context, obj: Mesh, render_path: str, resolution: int):
+def bake_emission(context, image_name, obj: Mesh, render_path: str, resolution: int) -> Image:
     backup_scene = bpy.context.scene
 
     # create new scene
@@ -545,9 +545,10 @@ def bake_emission(context, obj: Mesh, render_path: str, resolution: int):
     # set object as active
     context.view_layer.objects.active = obj
 
-    # add un node texture image dans le node tree du material
-    image_name = obj.name
+    # bake the emission
     bake_image = bpy.data.images.new(image_name, width=resolution, height=resolution, alpha=True)
+    bake_image.filepath_raw = render_path
+    bake_image.file_format = 'OPEN_EXR'
 
     material = obj.active_material
     node_tree = material.node_tree
@@ -556,13 +557,11 @@ def bake_emission(context, obj: Mesh, render_path: str, resolution: int):
 
     node_tree.nodes.active = image_texture_node
 
-    # bake the emission
+    color_output = node_tree.nodes.get("Material Output Color")
+
     bpy.ops.object.bake(type='EMIT')
 
-    # save the baked image
-    bake_image.filepath_raw = render_path
-    bake_image.file_format = 'OPEN_EXR'
-    bake_image.save()
+    bake_image.pack()
 
     print(f"Baked emission for {obj.name} in {render_path}")
 
@@ -575,12 +574,35 @@ def bake_emission(context, obj: Mesh, render_path: str, resolution: int):
     # restore the scene
     bpy.context.window.scene = backup_scene
 
+    return bake_image
+
+
+def set_output_node_active(obj: Mesh, node_name: str):
+    material = obj.active_material
+    node_tree = material.node_tree
+    output_node = node_tree.nodes.get(node_name)
+    output_node.is_active_output = True
+
+
+def set_alpha_channel(color_img, alpha_img):
+    color_image_pixels = list(color_img.pixels)
+    alpha_image_pixels = list(alpha_img.pixels)
+
+    new_image_pixels = []
+    for i in range(0, len(color_image_pixels), 4):
+        color_image_pixels[i + 3] = alpha_image_pixels[i]
+
+    color_img.pixels[:] = color_image_pixels
+
 
 def create_baked_image_material(name, path):
     material = import_shading_material("Projections_baked")
     material.name = name
     node_tree = material.node_tree
-    get_node('Baked image', node_tree).image = bpy.data.images.load(path)
+    image_node = get_node('Baked image', node_tree)
+    image_node.image = bpy.data.images.load(path)
+    # channel packed
+    image_node.image.alpha_mode = 'CHANNEL_PACKED'
 
     print("Created baked image material: ", material.name)
 

@@ -573,13 +573,28 @@ class TexDiff_OT_BakeProjection(bpy.types.Operator):
         shading_mesh_copy.data.name = new_name
         bake_collection.objects.link(shading_mesh_copy)
 
+        # make it selected
+        functions.select_object_solo(shading_mesh_copy)
+
         # set the first uv_layer as active
         shading_mesh_copy.data.uv_layers.active_index = 0
 
-        # Bake the emission
-        bake_render_path = f"{context.scene[img_dir_prop_name]}/{new_name}.exr"
+        # Bake the emission + alpha
+        bake_render_path = f"{context.scene[img_dir_prop_name]}/{shading_mesh_copy.name}.exr"
         bake_resolution = context.scene.textures_diffusion_props.bake_resolution
-        functions.bake_emission(context, shading_mesh_copy, bake_render_path, bake_resolution)
+
+        functions.set_output_node_active(shading_mesh_copy, "Material Output Color")
+
+        baked_color_image = functions.bake_emission(context, "color_bake", shading_mesh_copy, bake_render_path,
+                                                    bake_resolution)
+
+        functions.set_output_node_active(shading_mesh_copy, "Material Output Alpha")
+        baked_alpha_image = functions.bake_emission(context, "alpha_bake", shading_mesh_copy, "", bake_resolution)
+
+        functions.set_output_node_active(shading_mesh_copy, "Material Output Color")
+
+        functions.set_alpha_channel(baked_color_image, baked_alpha_image)
+        baked_color_image.save()
 
         # create a new material and assign to shading_mesh_copy
         baked_image_material = functions.create_baked_image_material(new_name, bake_render_path)
