@@ -9,6 +9,24 @@ class TexDiff_prop_group(bpy.types.PropertyGroup):
         subtype="FILE_PATH",
     )
 
+    enable_beauty_ref: bpy.props.BoolProperty(
+        name="Enable Beauty Ref",
+        description="Render the beauty reference image",
+        default=False,
+    )
+
+    enable_normal_ref: bpy.props.BoolProperty(
+        name="Enable Normal Ref",
+        description="Render the normal reference image",
+        default=True,
+    )
+
+    enable_depth_ref: bpy.props.BoolProperty(
+        name="Enable Depth Ref",
+        description="Render the depth reference image",
+        default=False,
+    )
+
     masks_resolution: bpy.props.IntProperty(
         name="Masks Resolution",
         description="Resolution of the projection masks",

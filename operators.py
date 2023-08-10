@@ -1,6 +1,7 @@
 from math import radians
 
 import bpy
+
 from . import functions
 
 subject_prop_name = "Subject mesh"
@@ -35,24 +36,38 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
         # Duplicate the active object and link it to the subjects collection
         active_obj = context.active_object
 
-        sd_proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD projection scene")
-        sd_proj_scene.render.resolution_x = 910
-        sd_proj_scene.render.resolution_y = 512
+        proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD projection scene")
+        proj_scene.render.resolution_x = 910
+        proj_scene.render.resolution_y = 512
 
         mesh_collection = bpy.data.collections.new(name=f"{active_obj.name} projection meshes")
-        sd_proj_scene.collection.children.link(mesh_collection)
+        proj_scene.collection.children.link(mesh_collection)
 
         camera_data = bpy.data.cameras.new(name="SD_Camera")
         camera_obj = bpy.data.objects.new(name="SD_Camera", object_data=camera_data)
-        sd_proj_scene.collection.objects.link(camera_obj)
-        sd_proj_scene.camera = camera_obj
+        proj_scene.collection.objects.link(camera_obj)
+        proj_scene.camera = camera_obj
         camera_data.type = 'ORTHO'
         camera_obj.location = (0, -10, 0)
         camera_obj.rotation_euler = (radians(90), 0, 0)
 
+        # set the world background white
+        proj_world = bpy.data.worlds.new(f"{active_obj.name} projection world")
+        proj_world.use_nodes = True
+        proj_world.node_tree.nodes["Background"].inputs[0].default_value = (1, 1, 1, 1)
+        proj_scene.world = proj_world
+
+        # enable the ambient occlusion and set the distance to 2 and factor to 10
+        proj_scene.eevee.use_gtao = True
+        proj_scene.eevee.gtao_distance = 2
+        proj_scene.eevee.gtao_factor = 10
+
+        # set color management to standard
+        proj_scene.view_settings.view_transform = 'Standard'
+
         # Store custom properties
-        sd_proj_scene[subject_prop_name] = active_obj
-        sd_proj_scene[proj_collection_prop_name] = mesh_collection
+        proj_scene[subject_prop_name] = active_obj
+        proj_scene[proj_collection_prop_name] = mesh_collection
 
         active_obj_copy_1 = active_obj.copy()
         active_obj_copy_1.data = active_obj.data.copy()
@@ -67,7 +82,7 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
         mesh_collection.objects.link(active_obj_copy_2)
 
         # Set the scene the active one
-        bpy.context.window.scene = sd_proj_scene
+        bpy.context.window.scene = proj_scene
 
         return {'FINISHED'}
 
@@ -102,11 +117,18 @@ class TexDiff_OT_RenderRefImg(bpy.types.Operator):
 
         bpy.context.window.cursor_set("WAIT")
 
-        functions.render_beauty(beauty_path)
+        enable_beauty = context.scene.textures_diffusion_props.enable_beauty_ref
+        enable_normal = context.scene.textures_diffusion_props.enable_normal_ref
+        enable_depth = context.scene.textures_diffusion_props.enable_depth_ref
 
-        functions.render_normal(normal_path)
+        if enable_beauty:
+            functions.render_beauty(beauty_path)
 
-        functions.render_depth(depth_path, proj_scene[proj_collection_prop_name])
+        if enable_normal:
+            functions.render_normal(normal_path)
+
+        if enable_depth:
+            functions.render_depth(depth_path, proj_scene[proj_collection_prop_name])
 
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
@@ -557,7 +579,7 @@ class TexDiff_OT_BakeProjection(bpy.types.Operator):
         # Bake the emission
         bake_render_path = f"{context.scene[img_dir_prop_name]}/{new_name}.exr"
         bake_resolution = context.scene.textures_diffusion_props.bake_resolution
-        functions.bake_emission(context,shading_mesh_copy, bake_render_path, bake_resolution)
+        functions.bake_emission(context, shading_mesh_copy, bake_render_path, bake_resolution)
 
         # create a new material and assign to shading_mesh_copy
         baked_image_material = functions.create_baked_image_material(new_name, bake_render_path)

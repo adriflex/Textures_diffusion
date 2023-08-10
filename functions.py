@@ -79,10 +79,6 @@ def render_beauty(render_path: str):
     # set the output path
     beauty_scene.render.filepath = render_path
 
-    # set default environment
-    world = bpy.data.worlds.new("World_beauty")
-    beauty_scene.world = world
-
     # render the scene
     bpy.ops.render.render(scene=beauty_scene.name, write_still=True)
 

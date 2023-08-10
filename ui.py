@@ -38,6 +38,12 @@ class TexDiff_PT_Panel(bpy.types.Panel):
             column6.prop(context.scene.render, "resolution_x")
             column6.prop(context.scene.render, "resolution_y", text="Y")
 
+            column2 = box.column(align=True)
+            column2.label(text="Image ref :")
+            column2.prop(context.scene.textures_diffusion_props, "enable_normal_ref", text="Normal")
+            column2.prop(context.scene.textures_diffusion_props, "enable_depth_ref", text="Depth")
+            column2.prop(context.scene.textures_diffusion_props, "enable_beauty_ref", text="Beauty")
+
             column5 = box.column(align=True)
             column5.label(text="Masks settings :")
             column5.prop(context.scene.textures_diffusion_props, "masks_resolution", text="Resolution")

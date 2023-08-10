@@ -49,9 +49,9 @@ def register():
 
 
 def unregister():
+    ui.unregister()
+    del bpy.types.Scene.textures_diffusion_props
     for cls in register_classes:
         bpy.utils.unregister_class(cls)
         print("Unregistered class: ", cls)
-    del bpy.types.Scene.textures_diffusion_props
     print("Unregistered property: ", bpy.types.Scene.textures_diffusion_props)
-    ui.unregister()
