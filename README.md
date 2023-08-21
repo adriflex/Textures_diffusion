@@ -8,7 +8,7 @@ Textures diffusion
 _The ultimate Blender addon for texture generation!_
 
 ![version](https://img.shields.io/badge/version-0.1.0-blue.svg)
-![licence](https://img.shields.io/badge/licence-GPL-blue.svg)
+![licence](https://img.shields.io/badge/licence-GNU-blue.svg)
 
 Created by Adrien Rouquié
 
