@@ -203,7 +203,7 @@ class TexDiff_OT_BakeProjMasks(bpy.types.Operator):
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
 
-        # bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
 
         for image in bpy.data.images:
             image.reload()

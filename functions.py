@@ -171,7 +171,8 @@ def render_facing(obj: Mesh, render_path: str, resolution, samples):
 
     backup_scene = bpy.context.scene
 
-    facing_scene = bpy.data.scenes.new(name=f"{obj.name} bake facing")
+    facing_scene = bpy.context.scene.copy()
+    facing_scene.name = "Bake_facing"
     facing_scene.render.engine = 'CYCLES'
     facing_scene.cycles.samples = samples
 
@@ -195,13 +196,19 @@ def render_facing(obj: Mesh, render_path: str, resolution, samples):
 
     nodes = facing_material.node_tree.nodes
 
+    # set camera vector into the shader
     camera = facing_scene.camera
     camera_rotation = camera.rotation_euler
 
-    vector = mathutils.Vector((0.0, 0.0, -1.0))
+    vector = mathutils.Vector((0.0, 0.0, 1.0))
     vector.rotate(camera_rotation)
     print("Camera vector: ", vector)
 
+    nodes['Camera_vector'].inputs[0].default_value = vector.x
+    nodes['Camera_vector'].inputs[1].default_value = vector.y
+    nodes['Camera_vector'].inputs[2].default_value = vector.z
+
+    # set the image to bake into
     texture_node = nodes['Texture_Bake_Node']
     texture_node.image = bake_image
 
@@ -233,7 +240,7 @@ def render_camera_occlusion(obj: Mesh, render_path: str, resolution, samples):
     backup_scene = bpy.context.scene
 
     cam_occlusion_scene = bpy.context.scene.copy()
-    cam_occlusion_scene.name = "SD_texture_bake_shadowing"
+    cam_occlusion_scene.name = "Bake_shadowing"
     cam_occlusion_scene.render.engine = 'CYCLES'
     cam_occlusion_scene.cycles.max_bounces = 0
     cam_occlusion_scene.cycles.samples = samples
@@ -246,6 +253,11 @@ def render_camera_occlusion(obj: Mesh, render_path: str, resolution, samples):
     shadowing_light = bpy.data.lights.new(name="shadowing_light", type='SUN')
     shadowing_light.angle = radians(10)
     shadowing_light_obj = bpy.data.objects.new(name="shadowing_light", object_data=shadowing_light)
+
+    camera = cam_occlusion_scene.camera
+    camera_rotation = camera.rotation_euler
+
+    shadowing_light_obj.rotation_euler = camera_rotation
 
     cam_occlusion_scene.collection.objects.link(shadowing_light_obj)
 
