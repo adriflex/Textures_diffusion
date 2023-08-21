@@ -1,4 +1,5 @@
 import os
+
 import bpy
 
 shading_mesh_prop_name = "Shading mesh"
@@ -82,8 +83,6 @@ class TexDiff_PT_Panel(bpy.types.Panel):
                     column8 = box2.column(align=True)
                     column8.prop(context.scene.textures_diffusion_props, "bake_resolution")
 
-
-# todo another panel for the settings
 
 def register():
     preview_coll = bpy.utils.previews.new()

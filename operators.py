@@ -27,23 +27,24 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
     bl_label = "Create new projection scene"
     bl_description = "Create a projection scene to create data for Stable Diffusion and shading scene"
 
-    # poll function
     @classmethod
     def poll(cls, context):
         return context.active_object and subject_prop_name not in context.scene
 
     def execute(self, context):
-
-        # Duplicate the active object and link it to the subjects collection
+        # get active object
         active_obj = context.active_object
 
+        # create a new scene for the projection
         proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD projection scene")
         proj_scene.render.resolution_x = 910
         proj_scene.render.resolution_y = 512
 
+        # create a collection
         mesh_collection = bpy.data.collections.new(name=f"{active_obj.name} projection meshes")
         proj_scene.collection.children.link(mesh_collection)
 
+        # create the camera
         camera_data = bpy.data.cameras.new(name="SD_Camera")
         camera_obj = bpy.data.objects.new(name="SD_Camera", object_data=camera_data)
         proj_scene.collection.objects.link(camera_obj)
@@ -70,6 +71,7 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
         proj_scene[subject_prop_name] = active_obj
         proj_scene[proj_collection_prop_name] = mesh_collection
 
+        # place the projection meshes
         active_obj_copy_1 = active_obj.copy()
         active_obj_copy_1.data = active_obj.data.copy()
         active_obj_copy_1.location = (-1.5, 0, 0)
@@ -93,7 +95,6 @@ class TexDiff_OT_RenderRefImg(bpy.types.Operator):
     bl_label = "Render ref images"
     bl_description = "Render image to use in Stable Diffusion"
 
-    # poll function
     @classmethod
     def poll(cls, context):
         camera_in_scene = context.scene.camera is not None
@@ -102,10 +103,12 @@ class TexDiff_OT_RenderRefImg(bpy.types.Operator):
         return camera_in_scene and proj_collection_in_scene and subject_prop_in_scene
 
     def execute(self, context):
+        # check if the .blend file is saved
         if not bpy.data.is_saved:
             self.report({'ERROR'}, "Please save the .blend file before baking")
             return {'CANCELLED'}
 
+        # set the variables
         proj_scene = context.scene
         functions.create_img_dir(proj_scene)
 
@@ -116,11 +119,12 @@ class TexDiff_OT_RenderRefImg(bpy.types.Operator):
         normal_path = f"{image_directory}/{subject_name}_normal.png"
         depth_path = f"{image_directory}/{subject_name}_depth.png"
 
-        bpy.context.window.cursor_set("WAIT")
-
         enable_beauty = context.scene.textures_diffusion_props.enable_beauty_ref
         enable_normal = context.scene.textures_diffusion_props.enable_normal_ref
         enable_depth = context.scene.textures_diffusion_props.enable_depth_ref
+
+        # render the images
+        bpy.context.window.cursor_set("WAIT")
 
         if enable_beauty:
             functions.render_beauty(beauty_path)
@@ -147,7 +151,6 @@ class TexDiff_OT_BakeProjMasks(bpy.types.Operator):
     bl_label = "Bake projection masks"
     bl_description = "Bake camera occlusion and facing masks"
 
-    # poll function
     @classmethod
     def poll(cls, context):
         camera_in_scene = context.scene.camera is not None
@@ -155,20 +158,23 @@ class TexDiff_OT_BakeProjMasks(bpy.types.Operator):
         return camera_in_scene and proj_collection_in_scene
 
     def execute(self, context):
+        # check if the .blend file is saved
         if not bpy.data.is_saved:
             self.report({'ERROR'}, "Please save the .blend file before baking")
             return {'CANCELLED'}
 
+        # set the variables
         proj_scene = context.scene
         functions.create_img_dir(proj_scene)
 
         collection = proj_scene[proj_collection_prop_name]
         image_directory = proj_scene[img_dir_prop_name]
 
-        bpy.context.window.cursor_set("WAIT")
-
         masks_resolution = proj_scene.textures_diffusion_props.masks_resolution
         mask_samples = proj_scene.textures_diffusion_props.masks_samples
+
+        # bake the masks
+        bpy.context.window.cursor_set("WAIT")
 
         for obj in collection.objects:
             assert obj.type == "MESH", f"Object {obj.name} is not a mesh"
@@ -219,7 +225,6 @@ class TexDiff_OT_CreateProjUVs(bpy.types.Operator):
     bl_label = "Create Projected UVs"
     bl_description = "Project the UVs of the collection from the camera"
 
-    # poll function
     @classmethod
     def poll(cls, context):
         camera_in_scene = context.scene.camera is not None
@@ -275,6 +280,7 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
 
     def execute(self, context):
 
+        # set the variables
         proj_scene = context.scene
         subject_mesh = proj_scene[subject_prop_name]
         subject_name = subject_mesh.name
@@ -284,7 +290,6 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene_name = f"{subject_name} SD shading"
 
         # check if the proj mesh collection is ok
-
         for obj in proj_mesh_collection.objects:
             if not obj.type == "MESH":
                 self.report({'ERROR'}, f"Object {obj.name} is not a mesh")
@@ -297,6 +302,7 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         context.window.scene = shading_scene
         shading_scene.render.resolution_x = proj_scene.render.resolution_x
         shading_scene.render.resolution_y = proj_scene.render.resolution_y
+        shading_scene.camera = proj_scene.camera
 
         # set the color management to standard
         shading_scene.view_settings.view_transform = "Standard"
@@ -306,7 +312,6 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene[gen_node_group_prop_name] = sd_gen_node_group
 
         # copy the subject into the shading scene
-
         shading_mesh = subject_mesh.copy()
         shading_mesh.data = subject_mesh.data.copy()
         shading_mesh.name = f"{subject_name}_shading"
@@ -317,6 +322,7 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
 
         final_shading_mesh_collection.objects.link(shading_mesh)
 
+        # create custom properties
         shading_scene[shading_mesh_prop_name] = shading_mesh
         shading_scene[projection_scene_prop_name] = proj_scene
         shading_scene[final_mesh_collection_prop_name] = final_shading_mesh_collection
@@ -325,7 +331,6 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_scene.textures_diffusion_props.use_mirror_X = proj_scene.textures_diffusion_props.use_mirror_X
 
         # create collection for tweaking
-
         tweak_mesh_collection = functions.clone_collection(context, proj_mesh_collection,
                                                            name=f"{shading_scene_name} projection tweaks",
                                                            suffix="_tweaks")
@@ -340,7 +345,7 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
             uv_layer = obj.data.uv_layers[0].name
             functions.add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera)
 
-        # transfer proj UVs
+        # transfer proj UVs into shading mesh
         shading_scene.collection.children.link(proj_mesh_collection)
 
         for obj in tweak_mesh_collection.objects:
@@ -361,7 +366,6 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
             obj.data.materials.append(tweak_uvs_mat)
 
         # create a new collection "breakdown"
-
         breakdown_collection = bpy.data.collections.new(name=f"{shading_scene_name} breakdown")
         shading_scene.collection.children.link(breakdown_collection)
         shading_scene[breakdown_collection_prop_name] = breakdown_collection
@@ -407,7 +411,6 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
             proj_node_groups.append(proj_node_group)
 
             proj_material = functions.create_proj_material(obj.name, proj_node_group, custom_mask_image)
-            # proj_materials.append(proj_material)
 
             # append material at object level
             shading_mesh.data.materials.clear()
@@ -424,6 +427,7 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_mesh.data.materials.clear()
         shading_mesh.data.materials.append(final_assembly_material)
 
+        # set the mesh same as the shading mesh
         for obj in breakdown_collection.objects:
             obj.data = shading_mesh.data
 
@@ -468,6 +472,7 @@ class TexDiff_OT_TransferTweakedUvs(bpy.types.Operator):
         if context.mode == 'EDIT_MESH':
             bpy.ops.object.mode_set(mode='OBJECT')
 
+        # get the variables
         active_scene = context.scene
 
         tweaking_collection = active_scene[tweaking_collection_prop_name]
@@ -477,6 +482,7 @@ class TexDiff_OT_TransferTweakedUvs(bpy.types.Operator):
         proj_scene_camera = active_scene[projection_scene_prop_name].camera
         active_scene.collection.objects.link(proj_scene_camera)
 
+        # transfer the tweaks
         for obj in tweaking_collection.objects:
             active_scene.view_layers[0].layer_collection.children[final_mesh_collection.name].hide_viewport = False
 
@@ -498,6 +504,9 @@ class TexDiff_OT_TransferTweakedUvs(bpy.types.Operator):
         active_scene.collection.objects.unlink(proj_scene_camera)
         active_scene.view_layers[0].layer_collection.children[tweaking_collection.name].hide_viewport = True
 
+        # toggle camera view
+        bpy.ops.view3d.view_camera()
+
         return {'FINISHED'}
 
 
@@ -518,10 +527,11 @@ class TexDiff_OT_PaintCustomMask(bpy.types.Operator):
         bpy.ops.paint.texture_paint_toggle()
         bpy.context.scene.tool_settings.image_paint.mode = 'IMAGE'
         bpy.context.scene.tool_settings.image_paint.canvas = custom_mask_image
+
         # set uv_layer 0 active
         context.active_object.data.uv_layers.active_index = 0
 
-        # todo : mettre le viewport en mode texture
+        bpy.context.space_data.shading.type = 'MATERIAL'
 
         return {'FINISHED'}
 
@@ -540,7 +550,8 @@ class TexDiff_OT_TweakProjection(bpy.types.Operator):
         if "Subdivision" in context.active_object.modifiers:
             context.active_object.modifiers["Subdivision"].show_on_cage = True
 
-        bpy.ops.view3d.view_selected(use_all_regions=False)
+        # view through the camera
+        bpy.ops.view3d.view_camera()
         bpy.ops.object.editmode_toggle()
 
         return {'FINISHED'}
@@ -593,22 +604,24 @@ class TexDiff_OT_BakeProjection(bpy.types.Operator):
 
         functions.set_output_node_active(shading_mesh_copy, "Material Output Color")
 
+        # combine the color and the alpha
         functions.set_alpha_channel(baked_color_image, baked_alpha_image)
         baked_color_image.save()
 
-        # create a new material and assign to shading_mesh_copy
+        # create the baked material and assign
         baked_image_material = functions.create_baked_image_material(new_name, bake_render_path)
+        shading_mesh_copy.data.materials.clear()
+        shading_mesh_copy.data.materials.append(baked_image_material)
 
         # clean the projection uvs
         functions.clean_cam_proj_uvs(shading_mesh_copy)
-
-        # clear material and assign the new one
-        shading_mesh_copy.data.materials.clear()
-        shading_mesh_copy.data.materials.append(baked_image_material)
 
         # hide the final assembly collection and make the baked mesh active
         layer_collection = context.scene.view_layers[0].layer_collection
         layer_collection.children[context.scene[final_mesh_collection_prop_name].name].hide_viewport = True
         context.view_layer.objects.active = shading_mesh_copy
+
+        # clean the scene
+        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
 
         return {'FINISHED'}
