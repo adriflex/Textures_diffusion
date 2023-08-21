@@ -33,6 +33,7 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
         return context.active_object and subject_prop_name not in context.scene
 
     def execute(self, context):
+
         # Duplicate the active object and link it to the subjects collection
         active_obj = context.active_object
 
@@ -159,7 +160,6 @@ class TexDiff_OT_BakeProjMasks(bpy.types.Operator):
             return {'CANCELLED'}
 
         proj_scene = context.scene
-
         functions.create_img_dir(proj_scene)
 
         collection = proj_scene[proj_collection_prop_name]
@@ -203,7 +203,7 @@ class TexDiff_OT_BakeProjMasks(bpy.types.Operator):
         # change the mouse cursor back to the default
         bpy.context.window.cursor_set("DEFAULT")
 
-        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+        # bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
 
         for image in bpy.data.images:
             image.reload()

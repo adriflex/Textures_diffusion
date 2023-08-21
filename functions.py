@@ -3,9 +3,8 @@ import pathlib
 from math import radians
 
 import bpy
+import mathutils
 from bpy.types import Camera, LayerCollection, Mesh, Scene, Material, NodeGroup, Node, NodeTree, Image
-
-from . import materials_baking
 
 subject_prop_name = "Subject mesh"
 proj_collection_prop_name = "Proj collection"
@@ -29,6 +28,18 @@ def select_object_solo(obj: Mesh):
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True)
+
+
+def import_shading_material(mat_name) -> Material:
+    filepath = os.path.join(os.path.dirname(__file__), "materials.blend")
+    with bpy.data.libraries.load(filepath) as (data_from, data_to):
+        data_to.materials = [mat_name]
+
+    if data_to.materials[0] is None:
+        raise ValueError("Material not found: ", mat_name)
+
+    print("Imported material: ", data_to.materials[0])
+    return data_to.materials[0]
 
 
 def get_scene_depth(camera: Camera, collection: LayerCollection) -> dict:
@@ -107,7 +118,7 @@ def render_normal(render_path: str):
     world.use_nodes = True
     world.node_tree.nodes["Background"].inputs[0].default_value = (0.5, 0.5, 1.0, 1.0)
 
-    normal_material = materials_baking.create_normal_material()
+    normal_material = import_shading_material("Normal")
 
     normal_scene.view_layers["ViewLayer"].material_override = normal_material
 
@@ -115,6 +126,7 @@ def render_normal(render_path: str):
 
     # clean up
     bpy.data.scenes.remove(normal_scene)
+    bpy.data.materials.remove(normal_material)
 
 
 def render_depth(render_path: str, mesh_collection: LayerCollection):
@@ -141,7 +153,9 @@ def render_depth(render_path: str, mesh_collection: LayerCollection):
 
     scene_depth = get_scene_depth(camera, mesh_collection)
 
-    depth_material = materials_baking.create_depth_material(scene_depth["min"], scene_depth["max"])
+    depth_material = import_shading_material("Depth")
+    depth_material.node_tree.nodes['depth_input'].inputs[1].default_value = scene_depth["min"]
+    depth_material.node_tree.nodes['depth_input'].inputs[2].default_value = scene_depth["max"]
 
     depth_scene.view_layers["ViewLayer"].material_override = depth_material
 
@@ -149,6 +163,7 @@ def render_depth(render_path: str, mesh_collection: LayerCollection):
 
     # clean up
     bpy.data.scenes.remove(depth_scene)
+    bpy.data.materials.remove(depth_material)
 
 
 def render_facing(obj: Mesh, render_path: str, resolution, samples):
@@ -170,7 +185,8 @@ def render_facing(obj: Mesh, render_path: str, resolution, samples):
     if obj.active_material:
         backup_mat = obj.active_material
 
-    facing_material = materials_baking.create_facing_material()
+    # facing_material = materials_baking.create_facing_material()
+    facing_material = import_shading_material("Facing")
     obj.active_material = facing_material
 
     # image to bake into
@@ -179,10 +195,15 @@ def render_facing(obj: Mesh, render_path: str, resolution, samples):
 
     nodes = facing_material.node_tree.nodes
 
-    texture_node = nodes.new(type='ShaderNodeTexImage')
+    camera = facing_scene.camera
+    camera_rotation = camera.rotation_euler
+
+    vector = mathutils.Vector((0.0, 0.0, -1.0))
+    vector.rotate(camera_rotation)
+    print("Camera vector: ", vector)
+
+    texture_node = nodes['Texture_Bake_Node']
     texture_node.image = bake_image
-    texture_node.name = 'Texture_Bake_Node'
-    texture_node.location = -300, 300
 
     nodes.active = texture_node
 
@@ -243,7 +264,7 @@ def render_camera_occlusion(obj: Mesh, render_path: str, resolution, samples):
     if obj.active_material:
         backup_mat = obj.active_material
 
-    diffuse_material = materials_baking.create_diffuse_material()
+    diffuse_material = import_shading_material("Diffuse")
     obj.active_material = diffuse_material
 
     image_name = f"{obj.name}_camera_occlusion"
@@ -251,10 +272,8 @@ def render_camera_occlusion(obj: Mesh, render_path: str, resolution, samples):
 
     nodes = diffuse_material.node_tree.nodes
 
-    texture_node = nodes.new(type='ShaderNodeTexImage')
+    texture_node = nodes['Texture_Bake_Node']
     texture_node.image = bake_image
-    texture_node.name = 'Texture_Bake_Node'
-    texture_node.location = -300, 300
 
     nodes.active = texture_node
 
@@ -357,17 +376,6 @@ def add_uv_project_modifier(obj, uv_layer, aspect_x, aspect_y, camera):
 
 
 # shading scene functions
-
-def import_shading_material(mat_name) -> Material:
-    filepath = os.path.join(os.path.dirname(__file__), "materials.blend")
-    with bpy.data.libraries.load(filepath) as (data_from, data_to):
-        data_to.materials = [mat_name]
-
-    if data_to.materials[0] is None:
-        raise ValueError("Material not found: ", mat_name)
-
-    print("Imported material: ", data_to.materials[0])
-    return data_to.materials[0]
 
 
 def import_shading_node_group(node_group_name) -> NodeGroup:
