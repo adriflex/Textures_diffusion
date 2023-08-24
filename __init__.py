@@ -33,7 +33,7 @@ bl_info = {
     "description": "Project textures using Stable Diffusion web ui",
     "warning": "",
     "doc_url": "",
-    "category": "Material",
+    "category": "Stable Diffusion",
 }
 import bpy
 

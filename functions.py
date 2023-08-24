@@ -46,7 +46,7 @@ def get_blend_name_without_ext() -> str:
 
 def create_img_dir(scene: Scene):
     blend_name = get_blend_name_without_ext()
-    image_directory = f"//{blend_name}_SD_maps"
+    image_directory = f"//{blend_name}_texture_SD_maps"
     scene[img_dir_prop_name] = image_directory
 
 

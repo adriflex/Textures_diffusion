@@ -35,7 +35,7 @@ preview_collections = {}
 
 
 class TexDiff_PT_Panel(bpy.types.Panel):
-    bl_label = "SD Texture Projector"
+    bl_label = "Textures Diffusion"
     bl_idname = "TexDiff_PT_Panel"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
