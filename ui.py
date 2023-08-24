@@ -46,7 +46,7 @@ class TexDiff_PT_Panel(bpy.types.Panel):
 
         # Icons
         preview_coll = preview_collections["main"]
-        my_icon = preview_coll["my_icon"]
+        tex_diff_icon = preview_coll["text_diff"]
 
         column = layout.column(align=True)
         column.label(text="Projection scene :")
@@ -83,7 +83,7 @@ class TexDiff_PT_Panel(bpy.types.Panel):
             column2.prop(context.scene.textures_diffusion_props, "img_generated_path", text="SD image path")
 
         column3 = layout.column(align=True)
-        column3.operator("textures_diffusion.create_new_shading_scene", icon_value=my_icon.icon_id)  # "MATSHADERBALL"
+        column3.operator("textures_diffusion.create_new_shading_scene", icon_value=tex_diff_icon.icon_id)  # "MATSHADERBALL"
         column3.operator("textures_diffusion.reload_sd_img_path")
         column3.operator("textures_diffusion.bake_projection", icon="RENDER_STILL")
 
@@ -114,7 +114,7 @@ def register():
     preview_coll = bpy.utils.previews.new()
 
     icons_dir = os.path.join(os.path.dirname(__file__), "tex_diff_icon.png")
-    preview_coll.load("my_icon", icons_dir, 'IMAGE')
+    preview_coll.load("text_diff", icons_dir, 'IMAGE')
 
     preview_collections["main"] = preview_coll
 
