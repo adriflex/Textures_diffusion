@@ -83,13 +83,21 @@ def get_scene_depth(camera: Camera, collection: LayerCollection) -> dict:
     min_distance = 100000.0
 
     for obj in objects:
+        print("obj: ", obj)
         # get the object position
         obj_pos = obj.location
 
+        # object > camera normalize vector
+        obj_to_camera_vector = mathutils.Vector(camera_pos - obj_pos)
+        obj_to_camera_vector_normalized = obj_to_camera_vector.normalized()
+
         # get object dimensions
         obj_dimensions = obj.dimensions
-        obj_max_pos = obj_pos + obj_dimensions / 2.0
-        obj_min_pos = obj_pos - obj_dimensions / 2.0
+        obj_max_pos = obj_pos - (obj_dimensions / 2.0) * obj_to_camera_vector_normalized
+        obj_min_pos = obj_pos + (obj_dimensions / 2.0) * obj_to_camera_vector_normalized
+        print("obj_max_pos: ", obj_max_pos)
+        print("obj_min_pos: ", obj_min_pos)
+
 
         # get the distance between the camera and the object
         distance_for_max = (camera_pos - obj_max_pos).length
