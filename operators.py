@@ -79,10 +79,10 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
         camera_obj.location = (0, -10, 0)
         camera_obj.rotation_euler = (radians(90), 0, 0)
 
-        # set the world background white
+        # set the world background dark grey
         proj_world = bpy.data.worlds.new(f"{active_obj.name} projection world")
         proj_world.use_nodes = True
-        proj_world.node_tree.nodes["Background"].inputs[0].default_value = (1, 1, 1, 1)
+        proj_world.node_tree.nodes["Background"].inputs[0].default_value = (0.1, 0.1, 0.1, 1)
         proj_scene.world = proj_world
 
         # enable the ambient occlusion and set the distance to 2 and factor to 10
