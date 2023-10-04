@@ -480,6 +480,31 @@ class TexDiff_OT_ReloadSdImgPath(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class TexDiff_OT_TweakProjection(bpy.types.Operator):
+    bl_idname = "textures_diffusion.tweak_projection"
+    bl_label = "Tweak projection"
+    bl_description = "Enter edit mode and tweak the projection of the selected object"
+
+    @classmethod
+    def poll(cls, context):
+        UVProject_modifier_exists = "UVProject" in context.active_object.modifiers
+        return UVProject_modifier_exists
+
+    def execute(self, context):
+        if "Subdivision" in context.active_object.modifiers:
+            context.active_object.modifiers["Subdivision"].show_on_cage = True
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        # view through the camera
+        if context.region_data.view_perspective != 'CAMERA':
+            context.region_data.view_perspective = 'CAMERA'
+
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        return {'FINISHED'}
+
+
 class TexDiff_OT_TransferTweakedUvs(bpy.types.Operator):
     bl_idname = "textures_diffusion.transfer_tweaked_uvs"
     bl_label = "Transfer projection tweaks"
@@ -558,27 +583,6 @@ class TexDiff_OT_PaintCustomMask(bpy.types.Operator):
         context.active_object.data.uv_layers.active_index = 0
 
         bpy.context.space_data.shading.type = 'MATERIAL'
-
-        return {'FINISHED'}
-
-
-class TexDiff_OT_TweakProjection(bpy.types.Operator):
-    bl_idname = "textures_diffusion.tweak_projection"
-    bl_label = "Tweak projection"
-    bl_description = "Enter edit mode and tweak the projection of the selected object"
-
-    @classmethod
-    def poll(cls, context):
-        UVProject_modifier_exists = "UVProject" in context.active_object.modifiers
-        return UVProject_modifier_exists
-
-    def execute(self, context):
-        if "Subdivision" in context.active_object.modifiers:
-            context.active_object.modifiers["Subdivision"].show_on_cage = True
-
-        # view through the camera
-        bpy.ops.view3d.view_camera()
-        bpy.ops.object.editmode_toggle()
 
         return {'FINISHED'}
 

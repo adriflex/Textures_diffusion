@@ -56,10 +56,10 @@ register_classes = [
     operators.TexDiff_OT_BakeProjMasks,
     operators.TexDiff_OT_CreateProjUVs,
     operators.TexDiff_OT_CreateNewShadingScene,
+    operators.TexDiff_OT_TweakProjection,
     operators.TexDiff_OT_TransferTweakedUvs,
     operators.TexDiff_OT_ReloadSdImgPath,
     operators.TexDiff_OT_PaintCustomMask,
-    operators.TexDiff_OT_TweakProjection,
     operators.TexDiff_OT_BakeProjection,
     properties.TexDiff_prop_group,
 ]
