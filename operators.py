@@ -343,6 +343,9 @@ class TexDiff_OT_CreateNewShadingScene(bpy.types.Operator):
         shading_mesh.name = f"{subject_name}_shading"
         shading_mesh.data.name = f"{subject_name}_shading"
 
+        # add a color attribute to the shading mesh
+        shading_mesh.data.color_attributes.new(name="color_under", type='FLOAT_COLOR', domain="POINT")
+
         final_shading_mesh_collection = bpy.data.collections.new(name=f"{shading_scene_name} final assembly")
         shading_scene.collection.children.link(final_shading_mesh_collection)
 

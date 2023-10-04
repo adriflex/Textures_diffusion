@@ -506,10 +506,11 @@ def create_proj_node_group(proj_data: dict) -> NodeGroup:
 
 
 def create_proj_material(proj_mesh_name, proj_node_group: Node, custom_mask_image: Image) -> Material:
-    proj_material = import_shading_material("Projections_cleaning")
-    proj_material.name = proj_mesh_name + "_Projections_cleaning"
+    proj_material = import_shading_material("Projections_settings")
+    proj_material.name = proj_mesh_name + "_Projections_settings"
     node_tree = proj_material.node_tree
     get_node('Proj', node_tree).node_tree = proj_node_group
+    get_node('Proj', node_tree).label = proj_mesh_name + " proj settings"
     get_node('Custom mask', node_tree).image = custom_mask_image
 
     print("Created projection material: ", proj_material.name)
@@ -570,6 +571,11 @@ def create_final_assembly_material(proj_node_groups: list, sd_gen_node_group: No
 
     input_reroute = get_node('input_mix_projections_node_group', node_tree)
     node_tree.links.new(last_mix_rgb.outputs['Color'], input_reroute.inputs[0])
+
+    color_under_node = get_node('color_under', node_tree)
+    color_under_node.layer_name = 'color_under'
+    first_mix_rgb = get_node('Mix 0', node_tree)
+    node_tree.links.new(color_under_node.outputs['Color'], first_mix_rgb.inputs['Color1'])
 
     output_alpha = get_node('Material Output Alpha', node_tree)
     node_tree.links.new(last_math.outputs['Value'], output_alpha.inputs[0])
