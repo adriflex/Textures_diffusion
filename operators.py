@@ -63,8 +63,9 @@ class TexDiff_OT_CreateNewProjScene(bpy.types.Operator):
 
         # create a new scene for the projection
         proj_scene = bpy.data.scenes.new(name=f"{active_obj.name} SD projection scene")
-        proj_scene.render.resolution_x = 910
+        proj_scene.render.resolution_x = 512
         proj_scene.render.resolution_y = 512
+        # todo : create a parameter for the resolution in the addon preferences
 
         # create a collection
         mesh_collection = bpy.data.collections.new(name=f"{active_obj.name} projection meshes")
