@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) 2023 Blender Foundation and Adrien Rouquié
 https://blender.org
 https://www.linkedin.com/in/adrien-rouquie/
@@ -22,11 +22,11 @@ This file is part of a Texture Diffusion add-on.
     You should have received a copy of the GNU General Public License
     along with this program; if not, see <https://www.gnu.org/licenses>.
 
-'''
-
+"""
 import os
 
 import bpy
+import bpy.utils.previews
 
 shading_mesh_prop_name = "Shading mesh"
 
@@ -67,23 +67,50 @@ class TexDiff_PT_Panel(bpy.types.Panel):
 
             column2 = box.column(align=True)
             column2.label(text="Image ref :")
-            column2.prop(context.scene.textures_diffusion_props, "enable_normal_ref", text="Normal")
-            column2.prop(context.scene.textures_diffusion_props, "enable_depth_ref", text="Depth")
-            column2.prop(context.scene.textures_diffusion_props, "enable_beauty_ref", text="Beauty")
+            column2.prop(
+                context.scene.textures_diffusion_props,
+                "enable_normal_ref",
+                text="Normal",
+            )
+            column2.prop(
+                context.scene.textures_diffusion_props, "enable_depth_ref", text="Depth"
+            )
+            column2.prop(
+                context.scene.textures_diffusion_props,
+                "enable_beauty_ref",
+                text="Beauty",
+            )
 
             column5 = box.column(align=True)
             column5.label(text="Masks settings :")
-            column5.prop(context.scene.textures_diffusion_props, "masks_resolution", text="Resolution")
-            column5.prop(context.scene.textures_diffusion_props, "masks_samples", text="Samples")
-            column5.prop(context.scene.textures_diffusion_props, "use_mirror_X", text="Symmetry X")
+            column5.prop(
+                context.scene.textures_diffusion_props,
+                "masks_resolution",
+                text="Resolution",
+            )
+            column5.prop(
+                context.scene.textures_diffusion_props, "masks_samples", text="Samples"
+            )
+            column5.prop(
+                context.scene.textures_diffusion_props,
+                "use_mirror_X",
+                text="Symmetry X",
+            )
 
         if "Proj collection" in context.scene or "Projection scene" in context.scene:
             column2 = layout.column(align=True)
             column2.label(text="Shading scene :")
-            column2.prop(context.scene.textures_diffusion_props, "img_generated_path", text="SD image path")
+            column2.prop(
+                context.scene.textures_diffusion_props,
+                "img_generated_path",
+                text="SD image path",
+            )
 
         column3 = layout.column(align=True)
-        column3.operator("textures_diffusion.create_new_shading_scene", icon_value=tex_diff_icon.icon_id)  # "MATSHADERBALL"
+        column3.operator(
+            "textures_diffusion.create_new_shading_scene",
+            icon_value=tex_diff_icon.icon_id,
+        )  # "MATSHADERBALL"
         column3.operator("textures_diffusion.reload_sd_img_path")
         column3.operator("textures_diffusion.bake_projection", icon="RENDER_STILL")
 
@@ -92,13 +119,19 @@ class TexDiff_PT_Panel(bpy.types.Panel):
                 column4 = layout.column(align=True)
                 column4.label(text="Custom mask :")
                 column4.operator("textures_diffusion.paint_custom_mask")
-                column4.operator("image.save_all_modified", text="Save all images", icon='FILE_TICK')
+                column4.operator(
+                    "image.save_all_modified", text="Save all images", icon="FILE_TICK"
+                )
 
             if "UVProject" in context.active_object.modifiers:
                 column7 = layout.column(align=True)
                 column7.label(text="Projection tweaks :")
-                column7.operator("textures_diffusion.tweak_projection", text="Edit tweaks")
-                column7.operator("textures_diffusion.transfer_tweaked_uvs", text="Transfer tweaks")
+                column7.operator(
+                    "textures_diffusion.tweak_projection", text="Edit tweaks"
+                )
+                column7.operator(
+                    "textures_diffusion.transfer_tweaked_uvs", text="Transfer tweaks"
+                )
 
             if shading_mesh_prop_name in context.scene.keys():
                 if context.scene[shading_mesh_prop_name] == context.active_object:
@@ -107,14 +140,16 @@ class TexDiff_PT_Panel(bpy.types.Panel):
                     box2.use_property_decorate = False
 
                     column8 = box2.column(align=True)
-                    column8.prop(context.scene.textures_diffusion_props, "bake_resolution")
+                    column8.prop(
+                        context.scene.textures_diffusion_props, "bake_resolution"
+                    )
 
 
 def register():
     preview_coll = bpy.utils.previews.new()
 
     icons_dir = os.path.join(os.path.dirname(__file__), "tex_diff_icon.png")
-    preview_coll.load("text_diff", icons_dir, 'IMAGE')
+    preview_coll.load("text_diff", icons_dir, "IMAGE")
 
     preview_collections["main"] = preview_coll
 

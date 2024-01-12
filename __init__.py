@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) 2023 Blender Foundation and Adrien Rouquié
 https://blender.org
 https://www.linkedin.com/in/adrien-rouquie/
@@ -22,7 +22,7 @@ This file is part of a Texture Diffusion add-on.
     You should have received a copy of the GNU General Public License
     along with this program; if not, see <https://www.gnu.org/licenses>.
 
-'''
+"""
 
 bl_info = {
     "name": "Textures diffusion",
@@ -47,9 +47,7 @@ if "bpy" in locals():
         importlib.reload(properties)
         importlib.reload(ui)
 
-from . import operators
-from . import properties
-from . import ui
+from . import operators, properties, ui
 
 register_classes = [
     operators.TexDiff_OT_CreateNewProjScene,
@@ -70,7 +68,9 @@ def register():
     for cls in register_classes:
         bpy.utils.register_class(cls)
         print("Registered class: ", cls)
-    bpy.types.Scene.textures_diffusion_props = bpy.props.PointerProperty(type=properties.TexDiff_prop_group)
+    bpy.types.Scene.textures_diffusion_props = bpy.props.PointerProperty(
+        type=properties.TexDiff_prop_group
+    )
     print("Registered property: ", bpy.types.Scene.textures_diffusion_props)
     ui.register()
 
@@ -81,4 +81,4 @@ def unregister():
     for cls in register_classes:
         bpy.utils.unregister_class(cls)
         print("Unregistered class: ", cls)
-    print("Unregistered property: ", bpy.types.Scene.textures_diffusion_props)
+    print("Unregistered property")
