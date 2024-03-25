@@ -30,7 +30,12 @@ Go to `Edit > Preferences > Addons > Install` and either select .zip file.
 
 Link for documentation : [📓How to use Textures Diffusion](https://docs.texturesdiffusion.com/textures-diffusion/)
 
+## Blender Supported Version 
+
+- Blender 3.3 LTS
+
 ## Changelog
 
 - 1.0.0 : Initial release
+- 1.0.1 : Fix the "previews" bug
 
