@@ -28,7 +28,7 @@ Go to `Edit > Preferences > Addons > Install` and either select .zip file.
 
 ## Usage
 
-Link for documentation : [📓How to use Textures Diffusion](https://docs.texturesdiffusion.com/textures-diffusion/)
+Link for documentation : [📓How to use Textures Diffusion](https://adriflex.gitbook.io/textures-diffusion)
 
 ## Blender Supported Version 
 
